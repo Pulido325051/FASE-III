@@ -285,7 +285,7 @@ Para elaborar y mantener la documentación de este proyecto se usaron estas herr
 
 | Herramienta | Para qué se usó |
 |---|---|
-| **Claude Code (Anthropic)**, asistente de IA | Apoyo en la redacción del `README`, y de este manual, y en la generación de pruebas y código. Todo se revisó y se probó ejecutándolo |
+| **Claude Code (Anthropic)**, asistente de IA | Apoyo en la redacción del `README` y de este manual, y en la generación de pruebas y código. Todo se revisó y se probó ejecutándolo |
 | **Swagger UI / OpenAPI** (generada por FastAPI en `/docs`) | Documentación interactiva de la API que se mantiene sola con el código |
 | **pytest** (`-v`) | Reporte legible de las pruebas automáticas |
 | **Markdown en GitHub** (`README.md`, `docs/`) | Documentación versionada junto al código |
