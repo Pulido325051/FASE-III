@@ -190,7 +190,7 @@ Para copiar el archivo de ajustes usa `cp .env.example .env` en lugar de `copy`.
 
 > **Mac:** los pasos de descarga y encendido para Mac están en «En Mac», dentro del paso 3.
 
-Si el repositorio es **privado**, necesitas haber sido invitado con tu cuenta de GitHub.
+El repositorio es **público**: no necesitas invitación ni cuenta de GitHub para descargarlo.
 
 **Forma fácil (sin programas extra):**
 

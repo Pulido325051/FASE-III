@@ -189,7 +189,7 @@ git clone https://github.com/Pulido325051/FASE-II.git
 cd FASE-II
 ```
 
-Si el repositorio es privado, usa un token de acceso personal de GitHub como contraseña, o copia el ZIP con `scp` y descomprímelo (`unzip FASE-II.zip`).
+El repositorio es público, así que no hace falta autenticarse. Si alguna vez se vuelve privado, usa un token de acceso personal de GitHub como contraseña, o copia el ZIP con `scp` y descomprímelo (`unzip FASE-II.zip`).
 
 ### Paso 4. Configurar contraseñas y puerto
 
