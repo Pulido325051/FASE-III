@@ -285,10 +285,10 @@ Para elaborar y mantener la documentación de este proyecto se usaron estas herr
 
 | Herramienta | Para qué se usó |
 |---|---|
-| **Claude Code (Anthropic)**, asistente de IA | Apoyo en la redacción del `README`, de este manual y del documento de validación, y en la generación de pruebas y código. Todo se revisó y se probó ejecutándolo |
+| **Claude Code (Anthropic)**, asistente de IA | Apoyo en la redacción del `README`, y de este manual, y en la generación de pruebas y código. Todo se revisó y se probó ejecutándolo |
 | **Swagger UI / OpenAPI** (generada por FastAPI en `/docs`) | Documentación interactiva de la API que se mantiene sola con el código |
 | **pytest** (`-v`) | Reporte legible de las pruebas automáticas |
 | **Markdown en GitHub** (`README.md`, `docs/`) | Documentación versionada junto al código |
 | **GitHub Copilot** (alternativa equivalente) | Servicio similar de asistencia por IA que también puede usarse para documentar y comentar código |
 
-La IA se usó como **apoyo**: las instrucciones y resultados de este manual que se pudieron comprobar localmente se ejecutaron y están registrados en el documento de validación.
+La IA se usó como **apoyo**: las instrucciones y resultados de este manual que se pudieron comprobar localmente se ejecutaron en un entorno local (ver la sección 3.4).

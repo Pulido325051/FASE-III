@@ -71,7 +71,6 @@ No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defe
 |---|---|
 | [`docs/EVIDENCIA_INTEGRACION.md`](docs/EVIDENCIA_INTEGRACION.md) | Evidencia de integración: cada endpoint de la API con peticiones y respuestas reales |
 | [`docs/MANUAL_DESPLIEGUE_NUBE.md`](docs/MANUAL_DESPLIEGUE_NUBE.md) (también en `.docx`) | Manual de despliegue en la nube: requerimientos, estrategia y pasos (Cloud Run, Azure, máquina virtual) |
-| [`docs/VALIDACION_Y_PRUEBAS.md`](docs/VALIDACION_Y_PRUEBAS.md) (también en `.docx`) | Validación y pruebas: pruebas funcionales, 34 casos extremos, resultados y conclusiones, con capturas |
 | [`docs/DETALLES_TECNICOS.md`](docs/DETALLES_TECNICOS.md) | Detalle técnico: arquitectura, API, seguridad |
 
 ---
@@ -461,7 +460,7 @@ Las pruebas dejan la base de datos como estaba.
 | `ejemplos/` | Dos documentos PDF **inventados** para probar |
 | `tests/` | Las 17 pruebas automáticas |
 | `herramientas/` | `anonimizar_vectorizador.py`: quita datos personales del modelo antes de publicarlo (ver abajo) |
-| `docs/` | Documentación: evidencia de integración, manual de despliegue en la nube, validación y pruebas (Markdown y Word, con capturas en `docs/capturas/`) y detalle técnico |
+| `docs/` | Documentación: evidencia de integración, manual de despliegue en la nube (Markdown y Word), capturas en `docs/capturas/` y detalle técnico |
 | `Dockerfile` | Las instrucciones para armar el contenedor del programa |
 | `docker-compose.yml` | Las instrucciones para encender juntos el programa y la base de datos |
 | `docker-compose.muestra.yml` | Opcional: arranca con una muestra propia en lugar de la base inventada (los datos reales **nunca** se suben a GitHub) |
