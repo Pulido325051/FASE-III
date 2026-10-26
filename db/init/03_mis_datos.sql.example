@@ -1,0 +1,12 @@
+-- PLANTILLA para agregar tus propios datos a la base de prueba.
+--
+-- 1. Copia este archivo como  db/init/03_mis_datos.sql  (sin ".example") y cambia los datos.
+-- 2. Reinicia la base:  docker compose down -v   y luego   docker compose up -d
+--    (o, sin reiniciar, ejecuta este mismo SQL con DBeaver o con docker compose exec).
+--
+-- 03_mis_datos.sql esta en .gitignore: tus datos se quedan en TU computadora y no se suben a GitHub.
+-- Solo nombre y CURP son importantes; lo demas puede quedarse vacio (NULL).
+USE controlescolar_prueba;
+
+INSERT INTO alumnos (nombre, apaterno, amaterno, sexo, fecha_nac, curp)
+VALUES ('NOMBRE', 'APELLIDO PATERNO', 'APELLIDO MATERNO', 'Masculino', '2000-01-31', 'XXXX000131HCHXXX00');

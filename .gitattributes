@@ -1,0 +1,5 @@
+# Finales de linea consistentes (los scripts y el Dockerfile se usan en Linux dentro del contenedor)
+* text=auto eol=lf
+*.bat text eol=crlf
+*.pkl binary
+*.pdf binary

@@ -1,0 +1,25 @@
+# Levanta el ambiente de pruebas con la MUESTRA en lugar de la base ficticia:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.muestra.yml up -d
+#
+# La muestra se carga desde db/init_muestra/ (01_esquema.sql y 02_datos.sql) en un
+# volumen APARTE (db_muestra), asi la base ficticia no se toca. Los PDFs de la muestra
+# se ponen en muestra_real/ (no se copian a la imagen de Docker).
+#
+# Volver a la base ficticia:   docker compose -f docker-compose.yml -f docker-compose.muestra.yml down
+#                              docker compose up -d
+# Borrar la muestra de Docker: docker compose -f docker-compose.yml -f docker-compose.muestra.yml down -v
+services:
+  db:
+    volumes:
+      - ./db/init_muestra:/docker-entrypoint-initdb.d:ro
+      - db_muestra:/var/lib/mysql
+
+  api:
+    volumes:
+      - archivos_muestra:/data/expedientes
+      - ./muestra_real:/muestra:ro      # PDFs de la muestra, visibles dentro del contenedor en /muestra
+
+volumes:
+  db_muestra:
+  archivos_muestra:

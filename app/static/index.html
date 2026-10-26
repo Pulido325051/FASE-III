@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expedientes - Control Escolar</title>
+<style>
+  :root { --fondo:#f0f0f0; --panel:#fff; --texto:#1b1b1b; --suave:#6b6b6b; --borde:#c9c9c9;
+          --acento:#1a5490; --mal:#b00000; --aviso:#a05a00; --cab:#e9edf2;
+          --listo:#d9f2d9; --revisar:#fff2cc; --guardado:#d0e4f7; --error:#f8d0d0; --sel:#cde4fb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo:#1a1d22; --panel:#23272e; --texto:#e8e8e8; --suave:#9aa0aa; --borde:#3a3f48;
+            --acento:#7db3ee; --mal:#f08a80; --aviso:#e6b05a; --cab:#2c313a;
+            --listo:#24402b; --revisar:#4a4222; --guardado:#233a52; --error:#4d2626; --sel:#2f4a6b; } }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; font:14px/1.35 "Segoe UI",system-ui,sans-serif; background:var(--fondo); color:var(--texto);
+         display:flex; flex-direction:column; }
+  .barra { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:10px; }
+  .sep { width:12px; }
+  .derecha { margin-left:auto; }
+  button { padding:5px 12px; border:1px solid var(--borde); border-radius:3px; background:var(--panel);
+           color:var(--texto); font:inherit; cursor:pointer; }
+  button:hover:enabled { border-color:var(--acento); background:var(--cab); }
+  button:disabled { opacity:.45; cursor:default; }
+  button.principal { background:var(--acento); border-color:var(--acento); color:#fff; }
+  button.peligro { color:var(--mal); }
+  .suave { color:var(--suave); }
+  .ayuda { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:0 10px; }
+  .ayuda .resalta { color:var(--acento); }
+  progress { width:220px; height:14px; margin-left:auto; }
+  main { flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; padding:8px 10px 10px; }
+  .tabla-scroll { overflow:auto; background:var(--panel); border:1px solid var(--borde); }
+  #marco-lista { flex:3; min-height:130px; }
+  table { width:100%; border-collapse:collapse; }
+  th { position:sticky; top:0; background:var(--cab); text-align:left; font-weight:600; padding:4px 8px;
+       border-bottom:1px solid var(--borde); white-space:nowrap; }
+  td { padding:3px 8px; border-bottom:1px solid color-mix(in srgb,var(--borde) 50%,transparent); height:24px; }
+  tbody tr { cursor:default; }
+  tr.Listo { background:var(--listo); } tr.Revisar { background:var(--revisar); }
+  tr.Guardado { background:var(--guardado); } tr.Error { background:var(--error); }
+  tr.falta { background:var(--error); }
+  tr.sel { outline:2px solid var(--acento); outline-offset:-2px; }
+  fieldset { border:1px solid var(--borde); background:var(--panel); padding:10px 12px; margin:0; }
+  legend { padding:0 4px; }
+  .rejilla { display:grid; grid-template-columns:max-content 1fr auto; gap:6px 10px; align-items:center; }
+  .rejilla > .etq { color:var(--texto); }
+  input[type=text], select { padding:4px 6px; border:1px solid var(--borde); border-radius:3px; background:var(--panel);
+                             color:var(--texto); font:inherit; min-width:0; }
+  #curp { font-family:Consolas,monospace; font-size:15px; width:220px; text-transform:uppercase; }
+  .fila-curp { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .negrita { font-weight:600; }
+  .azul { color:var(--acento); }
+  #mensaje { color:var(--aviso); grid-column:1 / -1; min-height:1.3em; }
+  .acciones { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  dialog { border:1px solid var(--borde); border-radius:4px; background:var(--fondo); color:var(--texto);
+           padding:14px; width:min(960px,96vw); }
+  dialog::backdrop { background:rgba(0,0,0,.4); }
+  dialog h3 { margin:0 0 10px; font-size:1.05rem; }
+  dialog .fila { display:flex; gap:6px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  dialog .fila input[type=text] { flex:1; min-width:180px; }
+  dialog .pie { display:flex; gap:6px; justify-content:flex-end; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  dialog .tabla-scroll { max-height:34vh; }
+  .texto-dialogo { white-space:pre-wrap; line-height:1.5; }
+  #pie-app { padding:0 10px 8px; color:var(--suave); font-size:12px; }
+  #pie-app a { color:var(--acento); }
+  .arrastrando main { outline:3px dashed var(--acento); outline-offset:-6px; }
+  @media (max-width:700px) { .rejilla { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="barra">
+    <button id="b-pdfs">Agregar PDFs...</button>
+    <button id="b-carpeta">Agregar carpeta...</button>
+    <button id="b-todos">Guardar todos los 'Listo'</button>
+    <button id="b-quitar-guardados">Quitar guardados de la lista</button>
+    <span class="sep"></span>
+    <button id="b-consultar">Consultar expediente...</button>
+    <span id="conexion" class="derecha suave">Conectando a la base de datos...</span>
+  </div>
+  <div class="ayuda">
+    <span id="ayuda" class="suave">Arrastra aquí los PDF o carpetas (a cualquier parte de la ventana), o usa 'Agregar PDFs'.</span>
+    <span id="progreso-txt" class="suave" style="margin-left:auto"></span>
+    <progress id="progreso" value="0" max="1"></progress>
+  </div>
+  <input id="in-pdfs" type="file" accept="application/pdf,.pdf" multiple hidden>
+  <input id="in-carpeta" type="file" webkitdirectory hidden>
+
+  <main>
+    <div id="marco-lista" class="tabla-scroll">
+      <table>
+        <thead><tr><th>Archivo</th><th>Estado</th><th>Tipo detectado</th><th>CURP</th><th>Alumno en la BD</th><th>Nota</th></tr></thead>
+        <tbody id="lista"></tbody>
+      </table>
+    </div>
+
+    <fieldset>
+      <legend>Documento seleccionado</legend>
+      <div class="rejilla">
+        <span class="etq">Archivo:</span><span id="d-archivo">-</span>
+        <button id="b-abrir-pdf" disabled>Abrir PDF</button>
+
+        <span class="etq">Tipo de documento:</span>
+        <span><select id="d-tipo" disabled></select> <span id="d-confianza" class="suave"></span></span><span></span>
+
+        <span class="etq">CURP:</span>
+        <div class="fila-curp">
+          <input id="curp" type="text" maxlength="18" disabled autocomplete="off" spellcheck="false">
+          <button id="b-buscar-curp" disabled>Buscar alumno por CURP</button>
+          <button id="b-buscar-nombre" disabled>Buscar por nombre...</button>
+          <span id="d-verif"></span>
+        </div><span></span>
+
+        <span class="etq">Nombre leído:</span><span id="d-nombre">-</span><span></span>
+        <span class="etq">Alumno en la BD:</span><span id="d-alumno" class="negrita">-</span><span></span>
+        <span class="etq">Se guardará como:</span><span id="d-destino" class="azul">-</span><span></span>
+        <div id="mensaje"></div>
+      </div>
+      <div class="acciones">
+        <button id="b-guardar" class="principal" disabled>Guardar en expediente</button>
+        <button id="b-ver-exp" disabled>Ver expediente del alumno</button>
+        <span class="derecha"></span>
+        <button id="b-quitar" disabled>Quitar de la lista</button>
+      </div>
+    </fieldset>
+  </main>
+  <div id="pie-app">
+    Base de datos de prueba con datos ficticios · <a href="/docs" target="_blank">API (/docs)</a> ·
+    Los PDF se leen en archivos temporales que se borran al terminar.
+  </div>
+
+  <!-- Buscar alumno por nombre -->
+  <dialog id="dlg-nombre">
+    <h3>Buscar alumno por nombre</h3>
+    <div class="fila"><label for="n-q">Nombre y/o apellidos:</label>
+      <input id="n-q" type="text" autocomplete="off"><button id="n-buscar">Buscar</button></div>
+    <div class="tabla-scroll"><table>
+      <thead><tr><th>Nombre</th><th>CURP</th><th>Matrícula</th><th>Generación</th><th>Escuela</th></tr></thead>
+      <tbody id="n-tabla"></tbody></table></div>
+    <div class="pie"><span id="n-estado" class="suave" style="margin-right:auto"></span>
+      <button id="n-asociar" class="principal" disabled>Asociar a este alumno</button>
+      <button id="n-cancelar">Cancelar</button></div>
+  </dialog>
+
+  <!-- Consultar expediente -->
+  <dialog id="dlg-exp">
+    <h3>Consultar expediente</h3>
+    <div class="fila"><label for="e-q">Nombre, CURP o matrícula:</label>
+      <input id="e-q" type="text" autocomplete="off"><button id="e-buscar">Buscar</button>
+      <span id="e-estado" class="suave"></span></div>
+    <div class="tabla-scroll" style="max-height:20vh"><table>
+      <thead><tr><th>Nombre</th><th>CURP</th><th>Matrícula</th><th>Generación</th><th>Escuela</th></tr></thead>
+      <tbody id="e-alumnos"></tbody></table></div>
+    <fieldset style="margin-top:10px"><legend>Documentos registrados</legend>
+      <div id="e-alumno" class="negrita">Selecciona un alumno</div>
+      <div id="e-resumen" style="margin:4px 0 8px"></div>
+      <div class="tabla-scroll" style="max-height:26vh"><table>
+        <thead><tr><th>Tipo capturado</th><th>Tipo reconocido</th><th>Archivo</th><th>Fecha</th><th>PDF en carpeta</th></tr></thead>
+        <tbody id="e-docs"></tbody></table></div>
+    </fieldset>
+    <div class="pie"><span class="suave" style="margin-right:auto">Doble clic en un documento para abrirlo.</span>
+      <button id="e-eliminar" class="peligro" disabled>Eliminar documento...</button>
+      <button id="e-abrir" disabled>Abrir PDF</button>
+      <button id="e-cerrar">Cerrar</button></div>
+  </dialog>
+
+  <!-- Confirmaciones -->
+  <dialog id="dlg-conf" style="width:min(560px,96vw)">
+    <h3 id="c-titulo"></h3>
+    <div id="c-texto" class="texto-dialogo"></div>
+    <div class="pie" id="c-botones"></div>
+  </dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (t) => { const d = document.createElement("div"); d.textContent = t ?? ""; return d.innerHTML; };
+
+const EN_COLA = "En cola", LEYENDO = "Leyendo...", LISTO = "Listo", REVISAR = "Revisar",
+      GUARDANDO = "Guardando...", GUARDADO = "Guardado", ERROR = "Error";
+const OCUPADO = [EN_COLA, LEYENDO, GUARDANDO, GUARDADO];
+const ORDEN_PRIORITARIO = ["CURP", "Certificados Secundaria", "Actas de nacimiento"];
+
+let tipos = [];            // [{categoria, tipo_bd}] en el orden de la app
+let hayBD = false;
+let docs = [];             // documentos de la lista
+let sel = null;            // documento seleccionado
+let contador = 0;
+let enLectura = 0;
+const MAX_LECTORES = 2;    // el servidor procesa 2 a la vez (MAX_CONCURRENCIA)
+
+const ordenTipo = (c) => { const i = ORDEN_PRIORITARIO.indexOf(c); if (i >= 0) return i;
+  const j = tipos.findIndex(t => t.categoria === c); return j >= 0 ? ORDEN_PRIORITARIO.length + j : 99; };
+
+// ------------------------------------------------------------------ CURP
+const DICC = "0123456789ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
+const curpFormato = (c) => /^[A-Z]{4}\d{6}[HMX][A-Z]{5}[A-Z0-9]\d$/.test(c);
+function curpVerificada(c) {
+  if (!curpFormato(c)) return false;
+  let s = 0; for (let i = 0; i < 17; i++) s += DICC.indexOf(c[i]) * (18 - i);
+  return String((10 - (s % 10)) % 10) === c[17];
+}
+function similitud(a, b) {   // fraccion de palabras de a que aparecen (aprox.) en b, sin importar el orden
+  const pa = a.toUpperCase().split(/\s+/).filter(Boolean), pb = b.toUpperCase().split(/\s+/).filter(Boolean);
+  if (!pa.length || !pb.length) return 0;
+  const parecido = (x, y) => { // proporcion de coincidencia por distancia de edicion
+    const m = x.length, n = y.length; if (!m || !n) return 0;
+    let prev = Array.from({length: n + 1}, (_, j) => j);
+    for (let i = 1; i <= m; i++) { const cur = [i];
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (x[i-1] === y[j-1] ? 0 : 1));
+      prev = cur; }
+    return 1 - prev[n] / Math.max(m, n); };
+  return pa.filter(p => pb.some(q => parecido(p, q) >= 0.8)).length / pa.length;
+}
+
+// ------------------------------------------------------------------ llamadas
+async function api(url, opciones) {
+  const r = await fetch(url, opciones);
+  let j = null; try { j = await r.json(); } catch {}
+  if (!r.ok) throw new Error((j && j.detail) ? (typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail)) : `Error ${r.status}`);
+  return j;
+}
+
+// ------------------------------------------------------------------ dialogos
+function confirmar(titulo, texto, botones) {   // botones: [{txt, valor, clase}] -> promesa con el valor elegido
+  return new Promise((resolver) => {
+    $("c-titulo").textContent = titulo; $("c-texto").textContent = texto;
+    const caja = $("c-botones"); caja.innerHTML = "";
+    botones.forEach(b => { const el = document.createElement("button"); el.textContent = b.txt;
+      if (b.clase) el.className = b.clase; el.onclick = () => { $("dlg-conf").close(); resolver(b.valor); }; caja.appendChild(el); });
+    $("dlg-conf").oncancel = () => resolver(null);
+    $("dlg-conf").showModal();
+  });
+}
+const si_no = (titulo, texto, peligro) => confirmar(titulo, texto,
+  [{txt: "Sí", valor: true, clase: peligro ? "peligro" : "principal"}, {txt: "No", valor: false}]);
+const aviso = (titulo, texto) => confirmar(titulo, texto, [{txt: "Aceptar", valor: true, clase: "principal"}]);
+
+// ------------------------------------------------------------------ evaluacion (igual que la app de escritorio)
+function evaluar(d) {
+  const avisos = [];
+  if (!tipos.some(t => t.categoria === d.categoria)) avisos.push(`El tipo '${d.categoria}' no está configurado.`);
+  if (d.confianza != null && d.confianza < 0.6) avisos.push(`Tipo dudoso (${Math.round(d.confianza * 100)}%): confirma el tipo de documento.`);
+  if (hayBD) {
+    if (!d.alumno) {
+      if (d.avisoBd) avisos.push(d.avisoBd);
+      else if (!d.curp) avisos.push("No se pudo leer la CURP: escríbela o busca al alumno por nombre.");
+      else avisos.push("La CURP no está en la base de datos: corrígela o busca por nombre.");
+    } else if (!d.confirmado) {
+      if (d.porNombre) avisos.push("Alumno encontrado por NOMBRE (no por CURP): confirma que sea la persona correcta.");
+      else if (d.nombreOcr && similitud(d.nombreOcr, d.alumno.nombre_completo) < 0.6)
+        avisos.push("El nombre del documento no coincide con el del alumno en la BD: revisa.");
+    }
+  }
+  d.mensaje = avisos.join(" ");
+  d.estado = avisos.length ? REVISAR : LISTO;
+}
+
+// ------------------------------------------------------------------ lista
+function agregar(archivos) {
+  const clave = (f) => `${f.name}|${f.size}|${f.lastModified}`;
+  const existentes = new Set(docs.map(d => clave(d.file)));
+  let nuevos = 0;
+  for (const f of archivos) {
+    if (!f.name.toLowerCase().endsWith(".pdf") || existentes.has(clave(f))) continue;
+    docs.push({id: ++contador, file: f, estado: EN_COLA, categoria: "", confianza: null, curp: "", nombreOcr: "",
+               alumno: null, avisoBd: "", porNombre: false, confirmado: false, mensaje: "", guardadoComo: "", destino: null});
+    existentes.add(clave(f)); nuevos++;
+  }
+  if (nuevos && !sel) sel = docs[0];
+  pintarLista(); bombear();
+}
+
+function pintarLista() {
+  $("lista").innerHTML = docs.map(d => {
+    const alumno = d.alumno ? `${d.alumno.nombre_completo} (${d.alumno.matricula})` : "";
+    const nota = d.estado === GUARDADO ? d.guardadoComo : d.mensaje;
+    return `<tr data-id="${d.id}" class="${d.estado === LEYENDO || d.estado === EN_COLA || d.estado === GUARDANDO ? "" : d.estado} ${sel === d ? "sel" : ""}">
+      <td>${esc(d.file.name)}</td><td>${esc(d.estado)}</td><td>${esc(d.categoria)}</td><td>${esc(d.curp)}</td>
+      <td>${esc(alumno)}</td><td>${esc(nota)}</td></tr>`;
+  }).join("");
+  document.querySelectorAll("#lista tr").forEach(tr => tr.onclick = () => { sel = docs.find(d => d.id == tr.dataset.id); pintarLista(); pintarDetalle(); });
+  actualizarProgreso();
+}
+
+function actualizarProgreso() {
+  const pend = docs.filter(d => d.estado === EN_COLA || d.estado === LEYENDO).length;
+  if (!docs.length || !pend) {
+    const c = (e) => docs.filter(d => d.estado === e).length;
+    $("progreso-txt").textContent = docs.length ? `${docs.length} documento(s): ${c(LISTO)} listos, ${c(REVISAR)} por revisar, ${c(GUARDADO)} guardados` : "";
+    $("progreso").max = Math.max(1, docs.length); $("progreso").value = docs.length;
+  } else {
+    $("progreso-txt").textContent = `Leyendo... ${docs.length - pend} de ${docs.length}`;
+    $("progreso").max = docs.length; $("progreso").value = docs.length - pend;
+  }
+}
+
+function refrescar(d) { pintarLista(); if (sel === d) pintarDetalle(); }
+
+// cola de lectura: varios documentos a la vez
+function bombear() {
+  while (enLectura < MAX_LECTORES) {
+    const d = docs.find(x => x.estado === EN_COLA);
+    if (!d) return;
+    d.estado = LEYENDO; enLectura++; refrescar(d);
+    leer(d).finally(() => { enLectura--; bombear(); });
+  }
+}
+
+async function leer(d) {
+  const datos = new FormData(); datos.append("archivo", d.file); datos.append("guardar", "false");
+  try {
+    const j = await api("/clasificar", {method: "POST", body: datos});
+    if (!docs.includes(d)) return;
+    d.categoria = j.tipo_documento; d.confianza = j.confianza;
+    d.curp = j.curp || ""; d.nombreOcr = j.nombre || "";
+    d.alumno = j.alumno || null; d.porNombre = j.encontrado_por === "nombre"; d.avisoBd = j.aviso_bd || "";
+    evaluar(d);
+  } catch (e) {
+    if (!docs.includes(d)) return;
+    d.estado = ERROR; d.mensaje = `No se pudo leer el PDF: ${e.message}`;
+  }
+  refrescar(d);
+}
+
+// ------------------------------------------------------------------ detalle
+function pintarDetalle() {
+  const d = sel;
+  const libre = d && !OCUPADO.includes(d.estado);
+  $("d-tipo").disabled = !libre; $("curp").disabled = !libre || !hayBD;
+  $("b-buscar-curp").disabled = !libre || !hayBD; $("b-buscar-nombre").disabled = !libre || !hayBD;
+  $("b-quitar").disabled = !d || d.estado === LEYENDO || d.estado === GUARDANDO;
+  $("b-abrir-pdf").disabled = !d;
+  if (!d) {
+    ["d-archivo", "d-nombre", "d-alumno", "d-destino"].forEach(i => $(i).textContent = "-");
+    $("d-confianza").textContent = ""; $("d-verif").textContent = ""; $("mensaje").textContent = "";
+    $("curp").value = ""; $("d-tipo").value = ""; $("b-guardar").disabled = true; $("b-ver-exp").disabled = true; return;
+  }
+  $("d-archivo").textContent = d.file.name;
+  if (d.categoria) $("d-tipo").value = d.categoria; else $("d-tipo").selectedIndex = -1;
+  $("d-confianza").textContent = d.confianza ? `confianza del modelo: ${Math.round(d.confianza * 100)}%` : "";
+  if (document.activeElement !== $("curp")) $("curp").value = d.curp;
+  const v = $("d-verif");
+  if (d.curp) { const ok = curpVerificada(d.curp); v.textContent = ok ? "dígito verificador OK" : "dígito verificador NO coincide";
+    v.style.color = ok ? "#1e7d3a" : "var(--aviso)"; } else v.textContent = "";
+  $("d-nombre").textContent = d.nombreOcr || "(no se pudo leer)";
+  const a = $("d-alumno");
+  if (d.alumno) { a.textContent = `${d.alumno.nombre_completo}  |  CURP ${d.alumno.curp}  |  Matrícula ${d.alumno.matricula}  |  ${d.alumno.generacion}`; a.style.color = ""; }
+  else { a.textContent = hayBD ? "(sin alumno asociado)" : "(sin base de datos)"; a.style.color = hayBD ? "var(--mal)" : ""; }
+  $("mensaje").textContent = d.estado !== GUARDADO ? d.mensaje : "";
+  const puede = hayBD && (d.estado === LISTO || d.estado === REVISAR) && d.alumno && tipos.some(t => t.categoria === d.categoria);
+  $("b-guardar").disabled = !puede; $("b-ver-exp").disabled = !d.alumno;
+  pintarDestino(d);
+}
+
+async function pintarDestino(d) {
+  const el = $("d-destino");
+  if (d.estado === GUARDADO) { el.textContent = d.guardadoComo; return; }
+  if (!d.alumno || !tipos.some(t => t.categoria === d.categoria)) { el.textContent = "-"; return; }
+  const clave = `${d.alumno.id}|${d.categoria}`;
+  if (!d.destino || d.destino.clave !== clave) {
+    el.textContent = "...";
+    try { const r = await api(`/alumnos/${d.alumno.id}/destino?categoria=${encodeURIComponent(d.categoria)}`);
+      d.destino = {clave, nombre: r.se_guardara_como}; } catch { d.destino = null; }
+  }
+  if (sel === d) el.textContent = d.destino ? d.destino.nombre : "-";
+}
+
+$("d-tipo").onchange = () => {
+  const d = sel; if (!d || OCUPADO.includes(d.estado)) return pintarDetalle();
+  d.categoria = $("d-tipo").value; d.confianza = null; d.destino = null; evaluar(d); refrescar(d);
+};
+$("b-abrir-pdf").onclick = () => { if (sel) window.open(URL.createObjectURL(sel.file), "_blank"); };
+$("b-quitar").onclick = () => { if (!sel || sel.estado === LEYENDO || sel.estado === GUARDANDO) return;
+  docs = docs.filter(d => d !== sel); sel = null; pintarLista(); pintarDetalle(); };
+$("b-quitar-guardados").onclick = () => { docs = docs.filter(d => d.estado !== GUARDADO);
+  if (sel && !docs.includes(sel)) sel = null; pintarLista(); pintarDetalle(); };
+
+// ------------------------------------------------------------------ buscar alumno
+$("b-buscar-curp").onclick = async () => {
+  const d = sel; if (!d || OCUPADO.includes(d.estado)) return;
+  const curp = $("curp").value.trim().toUpperCase().replace(/\s/g, ""); $("curp").value = curp;
+  if (!curpFormato(curp)) return aviso("CURP no válida", "La CURP debe tener 18 caracteres con el formato oficial.");
+  try {
+    const r = await api(`/alumnos/por-curp/${encodeURIComponent(curp)}`);
+    d.curp = curp; d.alumno = null; d.avisoBd = ""; d.porNombre = d.confirmado = false; d.destino = null;
+    if (r.length === 1) d.alumno = r[0];
+    else if (r.length > 1) d.avisoBd = `Hay ${r.length} alumnos con esa CURP: elige con 'Buscar por nombre'.`;
+    evaluar(d); refrescar(d);
+  } catch (e) { aviso("Base de datos", e.message); }
+};
+$("curp").addEventListener("keydown", (e) => { if (e.key === "Enter") $("b-buscar-curp").click(); });
+
+// dialogo: buscar por nombre
+let nElegido = null, nAlCerrar = null;
+function buscarNombre(textoInicial, alElegir) {
+  nElegido = null; nAlCerrar = alElegir; $("n-asociar").disabled = true;
+  $("n-q").value = textoInicial || ""; $("n-tabla").innerHTML = ""; $("n-estado").textContent = "";
+  $("dlg-nombre").showModal(); $("n-q").focus(); if ((textoInicial || "").length >= 2) nBuscar();
+}
+async function nBuscar() {
+  const q = $("n-q").value.trim(); if (q.length < 2) return;
+  $("n-estado").textContent = "Buscando..."; $("n-asociar").disabled = true; nElegido = null;
+  try {
+    const r = await api("/alumnos?q=" + encodeURIComponent(q));
+    $("n-tabla").innerHTML = r.map((a, i) => `<tr data-i="${i}"><td>${esc(a.nombre_completo)}</td><td>${esc(a.curp)}</td><td>${esc(a.matricula)}</td><td>${esc(a.generacion)}</td><td>${esc(a.escuela)}</td></tr>`).join("");
+    document.querySelectorAll("#n-tabla tr").forEach(tr => {
+      tr.onclick = () => { document.querySelectorAll("#n-tabla tr").forEach(x => x.classList.remove("sel")); tr.classList.add("sel");
+        nElegido = r[tr.dataset.i]; $("n-asociar").disabled = false; };
+      tr.ondblclick = () => { tr.onclick(); $("n-asociar").click(); }; });
+    $("n-estado").textContent = `${r.length} resultado(s)` + (r.length === 50 ? " (se muestran 50)" : "");
+  } catch (e) { $("n-estado").textContent = e.message; }
+}
+$("n-buscar").onclick = nBuscar;
+$("n-q").addEventListener("keydown", (e) => { if (e.key === "Enter") nBuscar(); });
+$("n-cancelar").onclick = () => $("dlg-nombre").close();
+$("n-asociar").onclick = () => { if (nElegido) { $("dlg-nombre").close(); nAlCerrar(nElegido); } };
+$("b-buscar-nombre").onclick = () => {
+  const d = sel; if (!d || OCUPADO.includes(d.estado)) return;
+  buscarNombre(d.nombreOcr, (a) => { d.alumno = a; d.curp = (a.curp || "").toUpperCase(); d.avisoBd = "";
+    d.porNombre = false; d.confirmado = true; d.destino = null; evaluar(d); refrescar(d); });
+};
+
+// ------------------------------------------------------------------ guardar
+async function guardarArchivo(d, modo, reemplazarId) {
+  d.estado = GUARDANDO; refrescar(d);
+  const datos = new FormData();
+  datos.append("archivo", d.file); datos.append("id_alumno", d.alumno.id); datos.append("categoria", d.categoria);
+  datos.append("modo", modo); if (reemplazarId != null) datos.append("reemplazar_id", reemplazarId);
+  try {
+    const r = await api("/guardar", {method: "POST", body: datos});
+    d.estado = GUARDADO; d.guardadoComo = r.guardado_como; d.mensaje = ""; refrescar(d); return true;
+  } catch (e) {
+    d.estado = ERROR; d.mensaje = `No se guardó: ${e.message}`; refrescar(d); return false;
+  }
+}
+
+$("b-guardar").onclick = async () => {
+  const d = sel; if (!d || !d.alumno || !tipos.some(t => t.categoria === d.categoria)) return;
+  if (d.estado === REVISAR && d.mensaje) {
+    const ok = await si_no("Confirmar", `${d.mensaje}\n\n¿Guardar de todas formas en el expediente de\n${d.alumno.nombre_completo}?`);
+    if (!ok) return;
+  }
+  let existentes;
+  try { existentes = (await api(`/alumnos/${d.alumno.id}/destino?categoria=${encodeURIComponent(d.categoria)}`)).existentes; }
+  catch (e) { return aviso("Base de datos", e.message); }
+  let modo = "nuevo", reemplazarId = null;
+  if (existentes.length) {
+    const ult = existentes[existentes.length - 1];
+    const r = await confirmar("Ya existe",
+      `${d.alumno.nombre_completo} ya tiene registrado este tipo de documento:\n` +
+      existentes.map(a => `   ${a.archivo}  [${a.tipo_capturado}]  (${a.fecha})`).join("\n") +
+      `\n\nREEMPLAZAR = sustituye el más reciente (${ult.archivo}) por este\nADICIONAL = guarda este como otro documento`,
+      [{txt: "Reemplazar", valor: "reemplazar", clase: "principal"}, {txt: "Guardar como adicional", valor: "adicional"}, {txt: "Cancelar", valor: null}]);
+    if (!r) return;
+    modo = r; if (r === "reemplazar") reemplazarId = ult.id;
+  }
+  const ok = await guardarArchivo(d, modo, reemplazarId);
+  if (!ok) aviso("No se guardó", d.mensaje);
+};
+
+$("b-todos").onclick = async () => {
+  // Por alumno y en orden CURP -> Certificado de secundaria -> Acta -> demas
+  const pendientes = docs.filter(d => d.estado === LISTO && d.alumno)
+    .sort((a, b) => a.alumno.id - b.alumno.id || ordenTipo(a.categoria) - ordenTipo(b.categoria));
+  if (!pendientes.length) return aviso("Guardar", "No hay documentos en estado 'Listo'.");
+  const ok = await si_no("Guardar", `¿Guardar ${pendientes.length} documento(s) en estado 'Listo'?\n\n` +
+    "Los que ya tengan ese tipo de documento registrado se dejan en 'Revisar' para que decidas uno por uno.");
+  if (!ok) return;
+  for (const d of pendientes) {   // de uno en uno para no saturar la base
+    try {
+      const ex = (await api(`/alumnos/${d.alumno.id}/destino?categoria=${encodeURIComponent(d.categoria)}`)).existentes;
+      if (ex.length) { d.estado = REVISAR; d.mensaje = `Ya tiene registrado '${ex[ex.length-1].tipo_capturado}' (${ex[ex.length-1].archivo}). Guárdalo individualmente para elegir reemplazar o adicional.`; refrescar(d); continue; }
+    } catch (e) { d.estado = ERROR; d.mensaje = e.message; refrescar(d); continue; }
+    await guardarArchivo(d, "nuevo", null);
+  }
+};
+
+// ------------------------------------------------------------------ consultar expediente
+let eAlumno = null, eDocs = [], eDoc = null;
+function abrirExpediente(alumno) {
+  eAlumno = null; eDoc = null; $("e-alumnos").innerHTML = ""; $("e-docs").innerHTML = "";
+  $("e-alumno").textContent = "Selecciona un alumno"; $("e-resumen").textContent = ""; $("e-estado").textContent = "";
+  $("e-eliminar").disabled = $("e-abrir").disabled = true;
+  $("e-q").value = alumno ? (alumno.curp || alumno.nombre_completo) : "";
+  $("dlg-exp").showModal(); $("e-q").focus(); if (alumno) eBuscar(alumno.id);
+}
+async function eBuscar(idPreseleccionado) {
+  const q = $("e-q").value.trim(); if (q.length < 2) return;
+  $("e-estado").textContent = "Buscando...";
+  try {
+    const r = await api("/alumnos?q=" + encodeURIComponent(q));
+    $("e-alumnos").innerHTML = r.map((a, i) => `<tr data-i="${i}"><td>${esc(a.nombre_completo)}</td><td>${esc(a.curp)}</td><td>${esc(a.matricula)}</td><td>${esc(a.generacion)}</td><td>${esc(a.escuela)}</td></tr>`).join("");
+    document.querySelectorAll("#e-alumnos tr").forEach(tr => tr.onclick = () => {
+      document.querySelectorAll("#e-alumnos tr").forEach(x => x.classList.remove("sel")); tr.classList.add("sel"); eCargar(r[tr.dataset.i]); });
+    $("e-estado").textContent = `${r.length} alumno(s)` + (r.length === 50 ? " (se muestran 50)" : "");
+    const pre = r.findIndex(a => a.id === idPreseleccionado);
+    if (pre >= 0 || r.length === 1) document.querySelectorAll("#e-alumnos tr")[Math.max(pre, 0)].click();
+  } catch (e) { $("e-estado").textContent = e.message; }
+}
+async function eCargar(alumno) {
+  eAlumno = alumno; eDoc = null; $("e-eliminar").disabled = $("e-abrir").disabled = true;
+  $("e-alumno").textContent = `${alumno.nombre_completo}   |   CURP ${alumno.curp}   |   Matrícula ${alumno.matricula}   |   id ${alumno.id}`;
+  $("e-resumen").textContent = "Cargando documentos..."; $("e-docs").innerHTML = "";
+  try {
+    eDocs = await api(`/alumnos/${alumno.id}/expediente`);
+    if (eAlumno !== alumno) return;
+    $("e-docs").innerHTML = eDocs.map((x, i) => `<tr data-i="${i}" class="${x.pdf_existe ? "" : "falta"}"><td>${esc(x.tipo_capturado)}</td><td>${esc(x.tipo_reconocido || "(otro)")}</td><td>${esc(x.archivo)}</td><td>${esc(x.fecha)}</td><td>${x.pdf_existe ? "Sí" : "NO"}</td></tr>`).join("");
+    document.querySelectorAll("#e-docs tr").forEach(tr => {
+      tr.onclick = () => { document.querySelectorAll("#e-docs tr").forEach(x => x.classList.remove("sel")); tr.classList.add("sel");
+        eDoc = eDocs[tr.dataset.i]; $("e-eliminar").disabled = $("e-abrir").disabled = false; };
+      tr.ondblclick = () => { tr.onclick(); eAbrir(); }; });
+    const tiene = new Set(eDocs.map(x => x.tipo_reconocido).filter(Boolean));
+    const nombres = tipos.map(t => t.categoria);
+    const si = nombres.filter(c => tiene.has(c)), no = nombres.filter(c => !tiene.has(c));
+    const sinPdf = eDocs.filter(x => !x.pdf_existe).length;
+    $("e-resumen").textContent = `${eDocs.length} documento(s).   Tiene: ${si.join(", ") || "ninguno"}.   No tiene: ${no.join(", ") || "nada"}.` +
+      (sinPdf ? `   ATENCIÓN: ${sinPdf} registro(s) sin PDF en la carpeta (en rojo).` : "");
+  } catch (e) { $("e-resumen").textContent = e.message; }
+}
+function eAbrir() {
+  if (!eDoc || !eAlumno) return;
+  if (!eDoc.pdf_existe) return aviso("No existe", "El archivo no está en la carpeta de expedientes.");
+  window.open(`/alumnos/${eAlumno.id}/expediente/${eDoc.id}/pdf`, "_blank");
+}
+$("e-eliminar").onclick = async () => {
+  if (!eDoc || !eAlumno) return;
+  const ok = await si_no("Eliminar documento",
+    `¿Eliminar este documento del expediente?\n\nAlumno:   ${eAlumno.nombre_completo}\nTipo:     ${eDoc.tipo_capturado}\n` +
+    `Archivo:  ${eDoc.archivo}\nFecha:    ${eDoc.fecha}\n\nEl registro se quita de la base de datos y el PDF se mueve a la carpeta ` +
+    `de eliminados (desde ahí se puede recuperar si fue un error).`, true);
+  if (!ok) return;
+  try { await api(`/alumnos/${eAlumno.id}/expediente/${eDoc.id}`, {method: "DELETE"});
+    await aviso("Eliminado", "El documento se eliminó del expediente."); eCargar(eAlumno); verificarSalud();
+  } catch (e) { aviso("No se eliminó", e.message); }
+};
+$("e-buscar").onclick = () => eBuscar();
+$("e-q").addEventListener("keydown", (e) => { if (e.key === "Enter") eBuscar(); });
+$("e-abrir").onclick = eAbrir;
+$("e-cerrar").onclick = () => $("dlg-exp").close();
+$("b-consultar").onclick = () => abrirExpediente(null);
+$("b-ver-exp").onclick = () => { if (sel && sel.alumno) abrirExpediente(sel.alumno); };
+
+// ------------------------------------------------------------------ cargar archivos (botones y arrastrar)
+$("b-pdfs").onclick = () => $("in-pdfs").click();
+$("b-carpeta").onclick = () => $("in-carpeta").click();
+$("in-pdfs").onchange = (e) => { agregar([...e.target.files]); e.target.value = ""; };
+$("in-carpeta").onchange = (e) => { agregar([...e.target.files]); e.target.value = ""; };
+
+async function archivosDeEntrada(entrada) {   // recorre carpetas arrastradas
+  if (entrada.isFile) return [await new Promise((ok, mal) => entrada.file(ok, mal))];
+  const salida = [], lector = entrada.createReader();
+  for (;;) {
+    const bloque = await new Promise((ok, mal) => lector.readEntries(ok, mal));
+    if (!bloque.length) break;
+    for (const e of bloque) salida.push(...await archivosDeEntrada(e));
+  }
+  return salida;
+}
+const AYUDA = "Arrastra aquí los PDF o carpetas (a cualquier parte de la ventana), o usa 'Agregar PDFs'.";
+let niveles = 0;
+function arrastre(activo) {
+  document.body.classList.toggle("arrastrando", activo);
+  $("ayuda").textContent = activo ? "Suelta aquí los PDF o carpetas..." : AYUDA;
+  $("ayuda").className = activo ? "resalta" : "suave";
+}
+window.addEventListener("dragenter", (e) => { e.preventDefault(); niveles++; arrastre(true); });
+window.addEventListener("dragover", (e) => e.preventDefault());
+window.addEventListener("dragleave", () => { if (--niveles <= 0) { niveles = 0; arrastre(false); } });
+window.addEventListener("drop", async (e) => {
+  e.preventDefault(); niveles = 0; arrastre(false);
+  const items = [...(e.dataTransfer.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (!items.length) return agregar([...e.dataTransfer.files]);
+  const archivos = []; for (const it of items) archivos.push(...await archivosDeEntrada(it));
+  agregar(archivos);
+});
+
+// ------------------------------------------------------------------ estado del servicio
+async function verificarSalud() {
+  try {
+    const s = await api("/salud");
+    hayBD = s.base_datos === "conectada";
+    $("conexion").textContent = !s.modelo_cargado ? "Cargando modelo..." :
+      hayBD ? `Conectado a ${s.base_nombre}: ${s.alumnos} alumnos, ${s.archivos} archivos` :
+      s.base_datos === "error" ? "Sin conexión a la base de datos" : "Sin base de datos: solo clasificación";
+    $("conexion").style.color = (s.base_datos === "error") ? "var(--mal)" : "";
+    ["b-todos", "b-consultar"].forEach(i => $(i).disabled = !hayBD);
+    if (!s.modelo_cargado) setTimeout(verificarSalud, 3000);
+  } catch { $("conexion").textContent = "Servicio no disponible"; $("conexion").style.color = "var(--mal)"; }
+  pintarDetalle();
+}
+
+(async function iniciar() {
+  try { tipos = await api("/tipos"); } catch {}
+  $("d-tipo").innerHTML = tipos.map(t => `<option>${esc(t.categoria)}</option>`).join("");
+  $("d-tipo").selectedIndex = -1;
+  await verificarSalud(); pintarLista(); pintarDetalle();
+})();
+</script>
+</body>
+</html>

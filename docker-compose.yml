@@ -1,0 +1,49 @@
+# Prueba local:   docker compose up --build      ->  http://localhost:8000
+# Pruebas:        docker compose run --rm api pytest -v
+# Borrar todo (incluida la base de prueba):  docker compose down -v
+#
+# Las contrasenas tienen valor por defecto (solo para la base de PRUEBA con datos ficticios).
+# Para cambiarlas: copiar .env.example como .env y editarlo.
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root-prueba-2026}
+      MYSQL_DATABASE: controlescolar_prueba
+      MYSQL_USER: ${DB_USER:-clasificador}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-prueba-2026}
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro   # crea las tablas y carga los 100 alumnos ficticios
+      - db_datos:/var/lib/mysql
+    ports:
+      - "${DB_PUERTO:-3307}:3306"   # para verla con DBeaver: localhost:3307
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  api:
+    build: .
+    image: clasificador-documentos:fase2
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PUERTO:-8000}:8000"
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: controlescolar_prueba
+      DB_USER: ${DB_USER:-clasificador}
+      DB_PASSWORD: ${DB_PASSWORD:-prueba-2026}
+      ARCHIVOS_DIR: /data/expedientes/archivos
+      MAX_MB: "15"
+      MAX_CONCURRENCIA: "2"
+    volumes:
+      - ./expedientes:/data/expedientes   # carpeta VISIBLE en tu PC: aqui quedan los PDFs de los alumnos
+    restart: unless-stopped
+
+volumes:
+  db_datos:

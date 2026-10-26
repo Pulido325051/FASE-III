@@ -1,0 +1,14 @@
+# Versiones fijas: el modelo se entreno con scikit-learn 1.9.1 y debe cargarse con la misma version
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+scikit-learn==1.9.1
+scipy==1.17.1
+numpy==2.3.5
+joblib==1.6.0
+pillow==12.3.0
+pytesseract==0.3.13
+pdf2image==1.17.0
+# Base de datos (MySQL); cryptography es necesaria para la autenticacion de MySQL 8
+PyMySQL==1.2.0
+cryptography==50.0.1

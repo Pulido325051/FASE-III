@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.vscode/
+*.log
+.env
+datos/
+db/
+# Nunca meter documentos reales a la imagen: solo los ejemplos ficticios generados
+*.docx
+
+# Muestra con datos reales: nunca dentro de la imagen
+muestra_real/
+
+# Los PDFs guardados viven en el volumen, no dentro de la imagen
+expedientes/

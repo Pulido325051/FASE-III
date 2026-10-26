@@ -1,0 +1,22 @@
+# Contrasenas locales: nunca se suben
+.env
+
+# Datos reales (muestra autorizada): nunca se suben
+muestra_real/
+db/init_muestra/
+
+# Archivos generados
+__pycache__/
+*.pyc
+.pytest_cache/
+datos/
+*.log
+.vscode/
+
+# Archivos de alumnos guardados por el sistema: la carpeta existe en GitHub, su contenido no se sube
+expedientes/*
+!expedientes/.gitkeep
+!expedientes/LEEME.md
+
+# Datos personales de quien usa el proyecto: se quedan en su computadora
+db/init/03_mis_datos.sql
