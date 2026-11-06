@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iniciar sesión · Expedientes Control Escolar</title>
+<style>
+  :root {
+    --azul-1:#0b2f57; --azul-2:#1a5490; --azul-3:#2f7bc8;
+    --fondo:#eef2f7; --tarjeta:#ffffff; --texto:#17212e; --suave:#5d6b7c; --borde:#d4dce6;
+    --campo:#ffffff; --acento:#1a5490; --acento-hover:#14436f; --mal:#b3261e; --mal-fondo:#fdecea;
+    --seleccion:#eaf2fb; --sombra:0 20px 50px rgba(11,47,87,.18), 0 2px 6px rgba(11,47,87,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo:#0e1621; --tarjeta:#172231; --texto:#e8edf3; --suave:#9aa9ba; --borde:#2b3b4f; --campo:#0f1925;
+            --acento:#4d9be8; --acento-hover:#6aaef0; --mal:#f2958f; --mal-fondo:#3a1f1d; --seleccion:#1d3350;
+            --sombra:0 20px 50px rgba(0,0,0,.5); }
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body { font:15px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif; color:var(--texto); background:var(--fondo);
+         display:grid; grid-template-columns:minmax(340px,46%) 1fr; }
+
+  /* ---------- panel de marca (izquierda) ---------- */
+  .marca { position:relative; overflow:hidden; color:#fff; padding:48px 56px; display:flex; flex-direction:column;
+           background:linear-gradient(155deg,var(--azul-1) 0%,var(--azul-2) 58%,var(--azul-3) 100%); }
+  .marca::before, .marca::after { content:""; position:absolute; border-radius:50%; background:rgba(255,255,255,.07); }
+  .marca::before { width:520px; height:520px; right:-180px; top:-160px; }
+  .marca::after { width:380px; height:380px; left:-140px; bottom:-150px; background:rgba(255,255,255,.06); }
+  .marca > * { position:relative; z-index:1; }
+  .logo { display:flex; align-items:center; gap:14px; }
+  .logo .icono { width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.16); display:grid; place-items:center;
+                 border:1px solid rgba(255,255,255,.25); }
+  .logo b { display:block; font-size:19px; letter-spacing:.2px; }
+  .logo span { font-size:13px; opacity:.8; }
+  .marca h1 { margin:auto 0 12px; font-size:clamp(26px,3.2vw,38px); line-height:1.15; font-weight:700; letter-spacing:-.3px; }
+  .marca p.lema { margin:0 0 28px; font-size:16px; opacity:.88; max-width:30em; }
+  .puntos { list-style:none; margin:0 0 auto; padding:0; display:grid; gap:14px; }
+  .puntos li { display:flex; gap:12px; align-items:flex-start; font-size:14.5px; opacity:.95; }
+  .puntos svg { flex:none; margin-top:1px; }
+  .marca footer { margin-top:36px; font-size:12.5px; opacity:.7; }
+
+  /* ---------- formulario (derecha) ---------- */
+  .lado { display:grid; place-items:center; padding:32px 24px; }
+  .tarjeta { width:min(460px,100%); background:var(--tarjeta); border:1px solid var(--borde); border-radius:18px;
+             box-shadow:var(--sombra); padding:34px 34px 28px; }
+  .tarjeta h2 { margin:0 0 4px; font-size:24px; letter-spacing:-.2px; }
+  .tarjeta .sub { margin:0 0 22px; color:var(--suave); }
+  .etiqueta { display:block; font-size:13px; font-weight:600; margin:0 0 8px; color:var(--suave); text-transform:uppercase; letter-spacing:.6px; }
+
+  .perfiles { display:grid; gap:10px; margin-bottom:20px; border:0; padding:0; min-width:0; }
+  .perfil { position:relative; }
+  .perfil input { position:absolute; opacity:0; inset:0; cursor:pointer; margin:0; }
+  .perfil label { display:flex; align-items:center; gap:14px; padding:12px 14px; border:1.5px solid var(--borde); border-radius:12px;
+                  background:var(--campo); cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
+  .perfil label:hover { border-color:var(--acento); }
+  .perfil input:focus-visible + label { box-shadow:0 0 0 3px color-mix(in srgb,var(--acento) 35%,transparent); }
+  .perfil input:checked + label { border-color:var(--acento); background:var(--seleccion);
+                                  box-shadow:0 0 0 1px var(--acento) inset; }
+  .perfil .ico { flex:none; width:42px; height:42px; border-radius:11px; display:grid; place-items:center; color:#fff; }
+  .perfil .ico.administrador { background:linear-gradient(135deg,#1a5490,#2f7bc8); }
+  .perfil .ico.operador { background:linear-gradient(135deg,#2e8b57,#46b074); }
+  .perfil .ico.consultor { background:linear-gradient(135deg,#8059c7,#a07fe0); }
+  .perfil .txt { min-width:0; flex:1; }
+  .perfil .txt b { display:block; font-size:15px; }
+  .perfil .txt small { color:var(--suave); font-size:12.5px; }
+  .perfil .marca-ok { flex:none; width:22px; height:22px; border-radius:50%; border:2px solid var(--borde); display:grid; place-items:center; color:transparent; }
+  .perfil input:checked + label .marca-ok { background:var(--acento); border-color:var(--acento); color:#fff; }
+
+  .campo { position:relative; margin-bottom:6px; }
+  .campo input { width:100%; padding:13px 46px 13px 44px; font:inherit; color:var(--texto); background:var(--campo);
+                 border:1.5px solid var(--borde); border-radius:12px; outline:none; transition:border-color .15s, box-shadow .15s; }
+  .campo input:focus { border-color:var(--acento); box-shadow:0 0 0 3px color-mix(in srgb,var(--acento) 25%,transparent); }
+  .campo .candado { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--suave); pointer-events:none; }
+  .campo button.ojo { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:36px; height:36px; border:0; border-radius:9px;
+                      background:transparent; color:var(--suave); cursor:pointer; display:grid; place-items:center; }
+  .campo button.ojo:hover { background:var(--seleccion); color:var(--acento); }
+
+  .error { display:none; align-items:center; gap:10px; margin:12px 0 0; padding:10px 12px; border-radius:10px; font-size:14px;
+           color:var(--mal); background:var(--mal-fondo); }
+  .error.ver { display:flex; }
+  .error.sacudir { animation:sacudir .35s; }
+  @keyframes sacudir { 20%,60% { transform:translateX(-6px); } 40%,80% { transform:translateX(6px); } }
+
+  button.entrar { width:100%; margin-top:18px; padding:13px; border:0; border-radius:12px; font:inherit; font-weight:600; font-size:16px; color:#fff;
+                  background:var(--acento); cursor:pointer; display:flex; justify-content:center; align-items:center; gap:10px;
+                  transition:background .15s, transform .05s; }
+  button.entrar:hover:enabled { background:var(--acento-hover); }
+  button.entrar:active:enabled { transform:translateY(1px); }
+  button.entrar:disabled { opacity:.75; cursor:default; }
+  .girar { width:18px; height:18px; border:2.5px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:vuelta .7s linear infinite; display:none; }
+  button.entrar.espera .girar { display:inline-block; }
+  @keyframes vuelta { to { transform:rotate(360deg); } }
+
+  .demo { margin-top:22px; border:1.5px dashed var(--borde); border-radius:12px; padding:0; overflow:hidden; }
+  .demo summary { cursor:pointer; padding:11px 14px; font-weight:600; font-size:13.5px; color:var(--suave); list-style:none; display:flex; align-items:center; gap:8px; }
+  .demo summary::-webkit-details-marker { display:none; }
+  .demo summary::after { content:"▾"; margin-left:auto; transition:transform .2s; }
+  .demo[open] summary::after { transform:rotate(180deg); }
+  .demo table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  .demo td { padding:7px 14px; border-top:1px solid var(--borde); }
+  .demo code { font-family:Consolas,monospace; background:var(--seleccion); padding:2px 7px; border-radius:6px; }
+  .demo button { border:1px solid var(--borde); background:var(--campo); color:var(--acento); border-radius:8px; padding:3px 10px; cursor:pointer; font:inherit; font-size:12.5px; }
+  .demo button:hover { border-color:var(--acento); }
+  .demo p { margin:0; padding:8px 14px 10px; font-size:12px; color:var(--suave); border-top:1px solid var(--borde); }
+  .pie { text-align:center; margin-top:20px; font-size:12.5px; color:var(--suave); }
+
+  @media (max-width:880px) {
+    body { grid-template-columns:1fr; grid-template-rows:auto 1fr; height:auto; min-height:100%; }
+    .marca { padding:26px 24px 30px; }
+    .marca h1 { margin:22px 0 8px; font-size:24px; } .marca p.lema { margin-bottom:0; font-size:14.5px; }
+    .puntos, .marca footer { display:none; }
+    .lado { padding:0 16px 28px; margin-top:-18px; position:relative; z-index:2; }
+    .tarjeta { padding:26px 20px 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+
+<!-- ======================= marca ======================= -->
+<section class="marca" aria-hidden="false">
+  <div class="logo">
+    <div class="icono">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>
+        <path d="m9 14.2 2 2 4-4.2"/>
+      </svg>
+    </div>
+    <div><b>Expedientes</b><span>Control Escolar</span></div>
+  </div>
+
+  <h1>Todos los documentos de cada alumno, en orden y a un clic.</h1>
+  <p class="lema">Lee los documentos escaneados con inteligencia artificial, los identifica y los guarda en el expediente correcto.</p>
+
+  <ul class="puntos">
+    <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" opacity=".5"/><path d="m8 12.3 2.8 2.8L16 9.5"/></svg>
+      <span>Reconoce acta de nacimiento, CURP, certificados y equivalencias con ~97&nbsp;% de exactitud.</span></li>
+    <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" opacity=".5"/><path d="m8 12.3 2.8 2.8L16 9.5"/></svg>
+      <span>Avisa si el alumno ya tiene el documento y evita duplicados por error.</span></li>
+    <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" opacity=".5"/><path d="m8 12.3 2.8 2.8L16 9.5"/></svg>
+      <span>Permisos por perfil: cada persona ve solo lo que le corresponde.</span></li>
+  </ul>
+  <footer>Fase III · Datos de demostración (ficticios)</footer>
+</section>
+
+<!-- ======================= formulario ======================= -->
+<main class="lado">
+  <form class="tarjeta" id="forma" autocomplete="on" novalidate>
+    <h2>Iniciar sesión</h2>
+    <p class="sub">Elige tu perfil y escribe tu contraseña.</p>
+
+    <fieldset class="perfiles" id="perfiles" style="margin:0 0 20px">
+      <legend class="etiqueta" style="padding:0">Perfil</legend>
+      <!-- se llena con los usuarios que dice el servidor -->
+    </fieldset>
+    <input type="text" id="usuario-oculto" name="username" autocomplete="username" hidden>
+
+    <label class="etiqueta" for="clave">Contraseña</label>
+    <div class="campo">
+      <svg class="candado" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>
+      <input id="clave" name="password" type="password" autocomplete="current-password" placeholder="Escribe tu contraseña" required>
+      <button type="button" class="ojo" id="ojo" aria-label="Mostrar la contraseña" title="Mostrar u ocultar la contraseña">
+        <svg id="ojo-ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+
+    <div class="error" id="error" role="alert" aria-live="assertive">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+      <span id="error-txt"></span>
+    </div>
+
+    <button class="entrar" id="entrar" type="submit"><span class="girar"></span><span id="entrar-txt">Entrar</span></button>
+
+    <details class="demo" id="demo" hidden>
+      <summary>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 8.2 12 13.4l9.5-5.2z"/><path d="M6 11v5c0 1.4 2.7 3 6 3s6-1.6 6-3v-5"/></svg>
+        Usuarios de demostración
+      </summary>
+      <table><tbody id="demo-filas"></tbody></table>
+      <p>Solo para la demostración con datos ficticios. Esta ayuda desaparece sola cuando se cambian las contraseñas en el archivo <b>.env</b>.</p>
+    </details>
+    <div class="pie">Expedientes · Control Escolar · Fase III</div>
+  </form>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const ICONOS = {
+  administrador: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v5.5c0 4.4 3 8 7.5 9.5 4.5-1.5 7.5-5.1 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg>',
+  operador: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7A2.5 2.5 0 0 0 4.5 6v12A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5V9z"/><path d="M14 3.5V9h5.5"/><path d="m9 15.5 5.3-5.3 1.6 1.6L10.600 17H9z"/></svg>',
+  consultor: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5.5 5.5"/></svg>'
+};
+const OK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+const esc = (t) => { const d = document.createElement("div"); d.textContent = t ?? ""; return d.innerHTML; };
+let usuarios = [];
+
+function seleccionado() { const r = document.querySelector('input[name="perfil"]:checked'); return r ? r.value : ""; }
+function mostrarError(texto) {
+  $("error-txt").textContent = texto; const e = $("error"); e.classList.add("ver"); e.classList.remove("sacudir"); void e.offsetWidth; e.classList.add("sacudir");
+}
+function limpiarError() { $("error").classList.remove("ver"); }
+
+function pintarPerfiles() {
+  $("perfiles").insertAdjacentHTML("beforeend", usuarios.map((u, i) => `
+    <div class="perfil">
+      <input type="radio" name="perfil" id="p-${esc(u.usuario)}" value="${esc(u.usuario)}" ${i === 0 ? "checked" : ""}>
+      <label for="p-${esc(u.usuario)}">
+        <span class="ico ${esc(u.usuario)}">${ICONOS[u.usuario] || ICONOS.consultor}</span>
+        <span class="txt"><b>${esc(u.nombre)}</b><small>${esc(u.descripcion)}</small></span>
+        <span class="marca-ok">${OK}</span>
+      </label>
+    </div>`).join(""));
+  document.querySelectorAll('input[name="perfil"]').forEach(r => r.addEventListener("change", () => {
+    $("usuario-oculto").value = seleccionado(); limpiarError(); $("clave").focus(); }));
+  $("usuario-oculto").value = seleccionado();
+}
+
+function pintarDemo(demo) {
+  const filas = usuarios.filter(u => demo[u.usuario]);
+  if (!filas.length) return;
+  $("demo").hidden = false;
+  $("demo-filas").innerHTML = filas.map(u => `<tr><td><b>${esc(u.nombre)}</b></td><td><code>${esc(demo[u.usuario])}</code></td>
+    <td style="text-align:right"><button type="button" data-u="${esc(u.usuario)}" data-c="${esc(demo[u.usuario])}">Usar</button></td></tr>`).join("");
+  document.querySelectorAll("#demo-filas button").forEach(b => b.onclick = () => {
+    const r = $("p-" + b.dataset.u); if (r) { r.checked = true; $("usuario-oculto").value = b.dataset.u; }
+    $("clave").value = b.dataset.c; $("clave").type = "password"; limpiarError(); $("entrar").focus(); });
+}
+
+$("ojo").onclick = () => {
+  const ver = $("clave").type === "password"; $("clave").type = ver ? "text" : "password";
+  $("ojo").setAttribute("aria-label", ver ? "Ocultar la contraseña" : "Mostrar la contraseña");
+  $("ojo-ico").innerHTML = ver ? '<path d="M3 3l18 18"/><path d="M10.6 6.2A9.8 9.8 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.5 7.5A17 17 0 0 0 2 12s3.600 7 10 7a9.500 9.500 0 0 0 4-.9"/><path d="M9.900 9.900a3 3 0 0 0 4.200 4.200"/>'
+    : '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+  $("clave").focus();
+};
+$("clave").addEventListener("input", limpiarError);
+
+$("forma").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const usuario = seleccionado(), clave = $("clave").value;
+  if (!usuario) return mostrarError("Elige un perfil.");
+  if (!clave) { mostrarError("Escribe tu contraseña."); return $("clave").focus(); }
+  const boton = $("entrar"); boton.disabled = true; boton.classList.add("espera"); $("entrar-txt").textContent = "Entrando…"; limpiarError();
+  try {
+    const r = await fetch("/api/login", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({usuario, clave})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(r.status === 429 ? (j.detail || "Demasiados intentos. Espera unos minutos.")
+      : r.status === 401 ? "La contraseña no es correcta. Revísala e inténtalo de nuevo." : (j.detail || `Error ${r.status}`));
+    $("entrar-txt").textContent = "¡Listo!"; location.replace("/");
+  } catch (err) {
+    mostrarError(err.message || "No se pudo conectar con el servidor.");
+    boton.disabled = false; boton.classList.remove("espera"); $("entrar-txt").textContent = "Entrar"; $("clave").select();
+  }
+});
+
+(async function iniciar() {
+  try {
+    const s = await (await fetch("/api/sesion")).json();
+    if (!s.requiere_clave || s.usuario) return location.replace("/");      // nada que pedir o ya entro
+    usuarios = s.usuarios; pintarPerfiles(); pintarDemo(s.demo || {});
+  } catch { mostrarError("No se pudo conectar con el servidor."); }
+  $("clave").focus();
+})();
+</script>
+</body>
+</html>

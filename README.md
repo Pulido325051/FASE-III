@@ -36,7 +36,7 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 | **Nuevo:** alumno encontrado por nombre sin CURP no pide revisión; **corregir la CURP** del alumno en la BD (con bitácora) | |
 | **Nuevo:** **respaldos** de la base de datos (.sql) y de los PDF (.zip) desde la pantalla; **login con 3 roles** (administrador, operador y consultor) con permisos distintos | |
 | Guardar, reemplazar, consultar y eliminar con papelera; todo en Docker con un solo comando | |
-| 38 pruebas automáticas y esta guía | |
+| 40 pruebas automáticas y esta guía | |
 
 ### ⚡ Resumen para quien ya sabe Docker
 
@@ -44,7 +44,7 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 git clone https://github.com/Pulido325051/FASE-III.git && cd FASE-III
 docker compose up --build        # primera vez: 5–15 min
 # abrir http://localhost:8000
-docker compose run --rm api pytest -v     # debe terminar con "38 passed"
+docker compose run --rm api pytest -v     # debe terminar con "40 passed"
 ```
 
 No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defecto.
@@ -262,7 +262,7 @@ Primero **elige un usuario y escribe su contraseña** (ver la tabla de abajo; pa
 
 ### Entrar al sistema: los tres usuarios
 
-La primera pantalla pide **elegir un usuario y escribir su contraseña**. Los de la demostración (datos ficticios) son:
+Al abrir la página aparece una **pantalla de inicio de sesión**: eliges tu perfil (tres tarjetas), escribes la contraseña (con un ojito para verla) y pulsas **Entrar**. Se adapta al celular y al modo oscuro. En la demostración hay una ayuda desplegable, *Usuarios de demostración*, con un botón **Usar** que rellena todo. Los de la demostración (datos ficticios) son:
 
 | Usuario | Contraseña de la demo | Qué puede hacer |
 |---|---|---|
@@ -271,6 +271,8 @@ La primera pantalla pide **elegir un usuario y escribir su contraseña**. Los de
 | **Consultor** | `consultor-2026` | **Solo consultar**: buscar alumnos, ver sus expedientes y abrir sus PDF. No agrega, guarda, elimina ni respalda |
 
 ![Pantalla de entrada](capturas/12_login_roles.png)
+
+*Modo oscuro y celular:* [oscuro](capturas/15_login_oscuro.png) · [celular](capturas/16_login_movil.png)
 
 Los permisos los **exige el servidor** (responde `403` si el rol no alcanza), no solo se ocultan botones. Estas contraseñas son de **demostración**: cámbialas
 en el archivo `.env` (`CLAVE_ADMINISTRADOR`, `CLAVE_OPERADOR`, `CLAVE_CONSULTOR`) antes de usar el sistema con datos reales o publicarlo.
@@ -425,7 +427,7 @@ luego reinicia con los dos comandos de arriba.
 
 ## 9. Comprobar que todo funciona (pruebas automáticas)
 
-El proyecto trae **38 pruebas automáticas** que revisan todo el sistema por ti.
+El proyecto trae **40 pruebas automáticas** que revisan todo el sistema por ti.
 
 En **Símbolo del sistema**, dentro de `C:\FASE-III`, escribe:
 
@@ -436,7 +438,7 @@ docker compose run --rm api pytest -v
 Espera menos de un minuto. Al final debe decir:
 
 ```
-38 passed
+40 passed
 ```
 
 Qué revisan las pruebas:
@@ -496,7 +498,7 @@ Las pruebas dejan la base de datos como estaba.
 | `db/` | La base de datos de prueba: estructura de las tablas y 100 alumnos **inventados** (ver sección 8) |
 | `expedientes/` | **Aquí se guardan los PDFs de los alumnos** al pulsar *Guardar en expediente* (ver sección 7). Su contenido no se sube a GitHub |
 | `ejemplos/` | Dos documentos PDF **inventados** para probar |
-| `tests/` | Las 38 pruebas automáticas |
+| `tests/` | Las 40 pruebas automáticas |
 | `herramientas/` | `anonimizar_vectorizador.py`: quita datos personales del modelo antes de publicarlo (ver abajo) |
 | `docs/` | Documentación: evidencia de integración, manual de despliegue en la nube (Markdown y Word), capturas en `docs/capturas/` y detalle técnico |
 | `Dockerfile` | Las instrucciones para armar el contenedor del programa |

@@ -96,7 +96,7 @@ def test_usuario_o_contrasena_incorrectos(cliente):
 
 def test_sin_sesion_nada_funciona(cliente):
     cliente.cookies.clear()
-    assert cliente.get("/salud").status_code == 200 and cliente.get("/").status_code == 200   # publicas
+    assert cliente.get("/salud").status_code == 200 and cliente.get("/login").status_code == 200   # publicas
     assert cliente.get("/api/sesion").json()["usuarios"] == [
         {"usuario": rol, "nombre": main.ROLES[rol]["nombre"], "descripcion": main.ROLES[rol]["descripcion"]}
         for rol in ESPERADO]
@@ -143,3 +143,35 @@ def test_bloqueo_tras_cinco_intentos_fallidos(cliente):
     for _ in range(5):
         assert entrar(cliente, "operador", "mal").status_code == 401
     assert entrar(cliente, "operador").status_code == 429          # ni la buena pasa mientras dura el bloqueo
+
+
+def test_pagina_de_entrada(cliente, monkeypatch):
+    cliente.cookies.clear()
+    # sin sesion, la pagina principal manda a la pagina de entrada
+    r = cliente.get("/", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/login"
+    r = cliente.get("/login")
+    assert r.status_code == 200 and "Iniciar sesión" in r.text and "no-cache" in r.headers["cache-control"]
+    # con sesion: /login manda a la pagina principal y esta carga
+    assert entrar(cliente, "operador").status_code == 200
+    r = cliente.get("/login", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/"
+    r = cliente.get("/", follow_redirects=False)
+    assert r.status_code == 200 and "Expedientes - Control Escolar" in r.text
+    # sin usuarios definidos (demo abierta) no hay nada que pedir
+    monkeypatch.setattr(main, "CLAVES", {})
+    cliente.cookies.clear()
+    r = cliente.get("/login", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/"
+    assert cliente.get("/", follow_redirects=False).status_code == 200
+
+
+def test_ayuda_de_demostracion_desaparece_al_cambiar_las_contrasenas(cliente, monkeypatch):
+    cliente.cookies.clear()
+    monkeypatch.setattr(main, "CLAVES", dict(main.CLAVES_DEMO))
+    assert cliente.get("/api/sesion").json()["demo"] == main.CLAVES_DEMO          # siguen las de demostracion
+    monkeypatch.setattr(main, "CLAVES", {**main.CLAVES_DEMO, "operador": "otra-clave-distinta"})
+    demo = cliente.get("/api/sesion").json()["demo"]
+    assert "operador" not in demo and "administrador" in demo                    # solo se muestra la que no se cambio
+    monkeypatch.setattr(main, "CLAVES", dict(CLAVES))                            # contrasenas propias: nada que mostrar
+    assert cliente.get("/api/sesion").json()["demo"] == {}
