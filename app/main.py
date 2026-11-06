@@ -39,7 +39,7 @@ from types import SimpleNamespace
 from typing import List, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -242,7 +242,10 @@ def _bd():
 
 # ---------------------------------------------------------------- usuarios y roles (opcional)
 # Hay tres usuarios fijos, uno por rol. Si ninguna contrasena esta definida, la web queda abierta (demo sin login).
-RUTAS_PUBLICAS = ("/", "/salud", "/api/login", "/api/logout", "/api/sesion", "/favicon.ico")
+RUTAS_PUBLICAS = ("/", "/login", "/salud", "/api/login", "/api/logout", "/api/sesion", "/favicon.ico")
+# Contrasenas de la DEMO (las mismas que trae docker-compose y el README). La pagina de entrada las muestra como ayuda
+# SOLO mientras un usuario siga usando exactamente esa contrasena: si se cambia en el .env, la ayuda desaparece sola.
+CLAVES_DEMO = {"administrador": "admin-2026", "operador": "operador-2026", "consultor": "consultor-2026"}
 
 
 def clave_correcta(clave, esperada):
@@ -344,15 +347,27 @@ def sesion(request: Request):
                 "permisos": ["consultar", "capturar", "respaldar"]}
     s = _sesion(request)
     info = _info_sesion(s["rol"]) if s else {"usuario": None, "rol": None, "permisos": []}
-    return {"requiere_clave": True, "usuarios": usuarios, **info}
+    demo = {rol: clave for rol, clave in CLAVES_DEMO.items() if CLAVES.get(rol) == clave}
+    return {"requiere_clave": True, "usuarios": usuarios, "demo": demo, **info}
 
 
 # ---------------------------------------------------------------- endpoints
 @app.get("/", include_in_schema=False)
-def inicio():
+def inicio(request: Request):
+    # Con usuarios y sin sesion, lo primero que se ve es la pagina de entrada
+    if CLAVES and _sesion(request) is None:
+        return RedirectResponse("/login", status_code=302)
     # "no-cache": el navegador revisa en cada visita si hay una version nueva de la pagina
     # (si no, Brave/Chrome pueden quedarse mostrando una version vieja despues de actualizar el sistema)
     return FileResponse(BASE / "app" / "static" / "index.html", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/login", include_in_schema=False)
+def pagina_de_entrada(request: Request):
+    # Sin usuarios definidos (demo abierta) o con sesion ya iniciada no hace falta entrar
+    if not CLAVES or _sesion(request) is not None:
+        return RedirectResponse("/", status_code=302)
+    return FileResponse(BASE / "app" / "static" / "login.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/salud", response_model=Salud, summary="Estado del servicio")

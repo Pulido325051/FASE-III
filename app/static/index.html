@@ -239,18 +239,6 @@
       <button id="r-cerrar">Cerrar</button></div>
   </dialog>
 
-  <!-- Entrar (solo si el servidor tiene contrasena) -->
-  <dialog id="dlg-login" style="width:min(420px,96vw)">
-    <h3>Entrar al sistema</h3>
-    <div class="fila"><label for="l-usuario" style="width:90px">Usuario:</label>
-      <select id="l-usuario" style="flex:1"></select></div>
-    <div id="l-desc" class="suave" style="margin:-2px 0 8px 96px"></div>
-    <div class="fila"><label for="l-clave" style="width:90px">Contraseña:</label>
-      <input id="l-clave" type="password" autocomplete="current-password" style="flex:1"></div>
-    <div id="l-error" class="error-txt"></div>
-    <div class="pie"><button id="l-entrar" class="principal">Entrar</button></div>
-  </dialog>
-
   <!-- Confirmaciones -->
   <dialog id="dlg-conf" style="width:min(560px,96vw)">
     <h3 id="c-titulo"></h3>
@@ -298,7 +286,7 @@ async function api(url, opciones) {
   if (!r.ok) {
     const e = new Error((j && j.detail) ? (typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail)) : `Error ${r.status}`);
     e.status = r.status;
-    if (r.status === 401 && !url.startsWith("/api/login")) pedirLogin();   // la sesion termino
+    if (r.status === 401 && !url.startsWith("/api/login")) { location.href = "/login"; return new Promise(() => {}); }   // la sesion termino
     throw e;
   }
   return j;
@@ -809,32 +797,6 @@ $("r-cancelar").onclick = async () => { if (await si_no("Cancelar", "¿Cancelar 
 $("r-cerrar").onclick = () => { clearTimeout(rTimer); $("dlg-resp").close(); };
 
 // ------------------------------------------------------------------ acceso con contrasena (solo si el servidor la tiene)
-let loginAbierto = false;
-async function pedirLogin() {
-  if (loginAbierto) return;
-  loginAbierto = true;
-  let usuarios = [];
-  try { usuarios = (await api("/api/sesion")).usuarios || []; } catch {}
-  $("l-usuario").innerHTML = usuarios.map(u => `<option value="${esc(u.usuario)}">${esc(u.nombre)}</option>`).join("");
-  const describir = () => { const u = usuarios.find(x => x.usuario === $("l-usuario").value); $("l-desc").textContent = u ? u.descripcion : ""; };
-  $("l-usuario").onchange = describir; describir();
-  return new Promise((resolver) => {
-    const dlg = $("dlg-login"); $("l-clave").value = ""; $("l-error").textContent = "";
-    dlg.oncancel = (e) => e.preventDefault();   // no se puede cerrar sin entrar
-    const entrar = async () => {
-      try { const r = await api("/api/login", {method: "POST", headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({usuario: $("l-usuario").value, clave: $("l-clave").value})});
-        dlg.close(); loginAbierto = false; aplicarSesion(r);
-        if (!tipos.length) await cargarTipos();   // si la lista de tipos no pudo cargarse antes de entrar
-        resolver(); verificarSalud();
-        if (!permisos.has("capturar")) abrirExpediente(null);   // el Consultor entra directo a consultar
-      } catch (e) { $("l-error").textContent = e.message; $("l-clave").select(); }
-    };
-    $("l-entrar").onclick = entrar;
-    $("l-clave").onkeydown = (e) => { if (e.key === "Enter") entrar(); };
-    dlg.showModal(); $("l-clave").focus();
-  });
-}
 // Muestra quien entro y deja a la vista solo lo que su rol puede usar (el servidor ademas lo exige: 403)
 function aplicarSesion(info) {
   const usuario = info && info.usuario;
@@ -852,7 +814,7 @@ function aplicarSesion(info) {
   $("b-respaldos").hidden = !(hayRespaldos && permisos.has("respaldar"));
 }
 $("b-consultar2").onclick = () => abrirExpediente(null);
-$("b-salir").onclick = async () => { try { await api("/api/logout", {method: "POST"}); } catch {} location.reload(); };
+$("b-salir").onclick = async () => { try { await fetch("/api/logout", {method: "POST"}); } catch {} location.href = "/login"; };
 
 // ------------------------------------------------------------------ cargar archivos (botones y arrastrar)
 $("b-pdfs").onclick = () => $("in-pdfs").click();
@@ -912,9 +874,10 @@ async function cargarTipos() {
 }
 
 (async function iniciar() {
-  try {   // contrasena: si el servidor la pide y no hay sesion, se pide antes de cargar nada
-    const ses = await api("/api/sesion");
-    if (ses.requiere_clave && !ses.usuario) await pedirLogin(); else aplicarSesion(ses.requiere_clave ? ses : null);
+  try {   // si el servidor pide usuario y no hay sesion, se va a la pagina de entrada antes de cargar nada
+    const ses = await fetch("/api/sesion").then(r => r.json());
+    if (ses.requiere_clave && !ses.usuario) { location.replace("/login"); return; }
+    aplicarSesion(ses.requiere_clave ? ses : null);
   } catch {}
   await cargarTipos();
   await verificarSalud(); pintarLista(); pintarDetalle();

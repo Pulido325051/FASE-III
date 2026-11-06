@@ -41,6 +41,7 @@ La base de datos es **opcional**: sin las variables `DB_*` la API solo clasifica
 | `/alumnos/{id}/curp` | POST | **Fase III.** Corrige la CURP del alumno en la BD: exige formato y dígito verificador válidos y que nadie más la tenga; queda en `registro_cambios_curp.csv` |
 | `/respaldo/bd`, `/respaldo/archivos` | POST | **Fase III.** Respaldo en segundo plano de la base de datos (.sql, una lectura consistente) o de los PDF (.zip). Un solo respaldo a la vez |
 | `/respaldo/estado`, `/respaldo/cancelar`, `/respaldo/descargar/{nombre}` | GET / POST | **Fase III.** Avance, cancelación y descarga (solo archivos `BD_*` y `Archivos_*` hechos por el sistema) |
+| `/login` | GET | **Fase III.** Página de inicio de sesión (HTML completo: tarjetas de perfil, contraseña con ojito, modo oscuro y celular). `/` manda aquí si hay usuarios y no hay sesión |
 | `/api/login`, `/api/logout`, `/api/sesion` | POST / GET | **Fase III.** Entrar con uno de los 3 usuarios (administrador, operador, consultor) con sesión por cookie. `/api/sesion` (pública) dice si hay que entrar, con qué usuarios y qué permisos tiene quien ya entró |
 | `/alumnos?q=...` | GET | Busca alumnos por nombre, CURP o matrícula |
 | `/alumnos/por-curp/{curp}` | GET | Alumno(s) con esa CURP (valida el formato) |
@@ -161,7 +162,7 @@ Para detener: `Ctrl + C` y `docker compose down`
 docker compose ps
 ```
 
-**b) Pruebas automáticas dentro del contenedor** (38 pruebas):
+**b) Pruebas automáticas dentro del contenedor** (40 pruebas):
 
 ```bash
 docker compose run --rm api pytest -v

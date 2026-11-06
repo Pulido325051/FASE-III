@@ -70,7 +70,7 @@ se pueden cancelar y se descargan desde la misma pantalla. Se guardan en `expedi
 ![Respaldos](capturas/11_respaldos.png)
 
 ### 8. Login con tres roles
-La página pide **elegir un usuario y escribir su contraseña**. Hay tres usuarios fijos:
+Al abrir la página, si no hay sesión, aparece una **pantalla de inicio de sesión completa** (`/login`): panel de marca, tres tarjetas para elegir el perfil, contraseña con ojito para verla, mensajes de error claros (con aviso si hay demasiados intentos), modo oscuro y diseño para celular. Hay tres usuarios fijos:
 
 | Usuario | Puede | No puede |
 |---|---|---|
@@ -79,6 +79,10 @@ La página pide **elegir un usuario y escribir su contraseña**. Hay tres usuari
 | **Consultor** | **Consultar** expedientes y abrir sus PDF | Agregar, guardar, eliminar, corregir CURP y respaldos |
 
 ![Pantalla de entrada](capturas/12_login_roles.png)
+
+![Modo oscuro](capturas/15_login_oscuro.png)
+
+![En el celular](capturas/16_login_movil.png)
 
 Lo que ve cada rol cambia: el **Operador** no tiene el botón *Respaldos…*; el **Consultor** entra directo a *Consultar expediente* y solo ve el panel de consulta.
 
@@ -105,7 +109,7 @@ queda en las bitácoras y en la descripción de cada archivo guardado.
 
 ## Cómo se comprobó
 
-- **38 pruebas automáticas** (`docker compose run --rm api pytest -v`): las 17 de la Fase II más 21 nuevas (duplicados con nombre, categoría Duplicado, corregir CURP,
+- **40 pruebas automáticas** (`docker compose run --rm api pytest -v`): las 17 de la Fase II más 23 nuevas (duplicados con nombre, categoría Duplicado, corregir CURP,
   respaldos, reglas de alumno por nombre y **roles**: matriz completa de permisos por rol con `401`/`403`, con y sin base de datos).
 - **Prueba en navegador real** (Microsoft Edge): subir los PDF de ejemplo, ya cargado → turquesa, duplicado con nombre y errores de nombre, categoría Duplicado,
   los dos botones de limpiar, corregir CURP (y restaurarla), respaldo de la BD con descarga, y **entrar con los tres roles** (qué botones ve cada uno y que el servidor rechaza con `403` lo que no le toca). Se encontró y corrigió un error
@@ -119,9 +123,9 @@ queda en las bitácoras y en la descripción de cada archivo guardado.
 | `app/almacenamiento.py`, `app/base_datos.py` | Nombre con prefijo, validación, `actualizar_curp`, usuario en bitácoras (mismo código que el programa de escritorio) |
 | `app/respaldos.py` *(nuevo)* | Respaldo de la BD y de los archivos |
 | `app/reglas.py` *(nuevo)* | Reglas de «alumno por nombre» |
-| `app/static/index.html` | Pantalla: colores, ventanas nuevas, botones de limpiar, respaldos y entrada |
+| `app/static/index.html`, `app/static/login.html` *(nuevo)* | Pantalla principal (colores, ventanas nuevas, limpiar, respaldos, roles) y página de inicio de sesión |
 | `docker-compose.yml`, `.env.example` | `RESPALDOS_DIR`, `CLAVE_*` (usuarios de la demo), imagen `fase3` |
-| `tests/` | 21 pruebas nuevas (`test_roles.py` y `conftest.py` son nuevos) |
+| `tests/` | 23 pruebas nuevas (`test_roles.py` y `conftest.py` son nuevos) |
 
 ## Lo que sigue pendiente
 
