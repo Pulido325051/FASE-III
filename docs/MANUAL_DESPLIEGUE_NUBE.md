@@ -1,4 +1,4 @@
-# Manual de despliegue en la nube — Fase II
+# Manual de despliegue en la nube — Fase III
 
 Sistema de Expedientes con IA (API en Docker). Este manual explica, paso a paso, cómo publicar el sistema en la nube.
 
@@ -84,7 +84,7 @@ Internet ── HTTPS ──> Cloud Run          Internet ── HTTPS ──> P
 Se ejecutó la imagen simulando lo que hace una plataforma en la nube: puerto asignado por variable y **sin** base de datos.
 
 ```bash
-docker run -d --name prueba-nube -p 8050:8080 -e PORT=8080 clasificador-documentos:fase2
+docker run -d --name prueba-nube -p 8050:8080 -e PORT=8080 clasificador-documentos:fase3
 ```
 
 | Comprobación | Resultado |
@@ -101,14 +101,14 @@ docker run -d --name prueba-nube -p 8050:8080 -e PORT=8080 clasificador-document
 ### Paso 1. Preparar la cuenta
 
 1. Crea una cuenta en <https://cloud.google.com/> y activa la facturación.
-2. Crea un proyecto y anota su identificador (por ejemplo `fase2-expedientes`).
+2. Crea un proyecto y anota su identificador (por ejemplo `fase3-expedientes`).
 3. Instala la herramienta `gcloud`: <https://cloud.google.com/sdk/docs/install>
 
 ### Paso 2. Iniciar sesión y elegir el proyecto
 
 ```bash
 gcloud auth login
-gcloud config set project fase2-expedientes
+gcloud config set project fase3-expedientes
 ```
 
 ### Paso 3. Activar los servicios necesarios
@@ -185,11 +185,11 @@ docker compose version
 ### Paso 3. Llevar el proyecto a la máquina
 
 ```bash
-git clone https://github.com/Pulido325051/FASE-II.git
-cd FASE-II
+git clone https://github.com/Pulido325051/FASE-III.git
+cd FASE-III
 ```
 
-El repositorio es público, así que no hace falta autenticarse. Si alguna vez se vuelve privado, usa un token de acceso personal de GitHub como contraseña, o copia el ZIP con `scp` y descomprímelo (`unzip FASE-II.zip`).
+El repositorio es público, así que no hace falta autenticarse. Si alguna vez se vuelve privado, usa un token de acceso personal de GitHub como contraseña, o copia el ZIP con `scp` y descomprímelo (`unzip FASE-III.zip`).
 
 ### Paso 4. Configurar contraseñas y puerto
 
@@ -263,7 +263,7 @@ gcloud run services update clasificador-documentos --region us-central1 \
 | Aspecto | Acción |
 |---|---|
 | Datos | Usar **solo datos ficticios** en un despliegue público |
-| Acceso | La aplicación **aún no tiene contraseña de acceso** (pendiente para la Fase III): no publicarla con datos reales |
+| Acceso | Desde la Fase III la aplicación puede pedir **contraseña** (variable `APP_CLAVE`; sin ella queda abierta). Para publicarla con datos reales, `APP_CLAVE` es **obligatoria** y debe guardarse en el gestor de secretos |
 | Secretos | Contraseñas en el gestor de secretos de la nube, no en el código ni en el repositorio |
 | Red | No exponer el puerto de MySQL; limitar el acceso a la base |
 | HTTPS | Activo en Cloud Run y Azure por omisión; en una máquina virtual, con Caddy |

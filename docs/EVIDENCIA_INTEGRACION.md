@@ -1,9 +1,9 @@
-# Evidencia de integración — API y endpoints (Fase II)
+# Evidencia de integración — API y endpoints (Fase III)
 
 Este documento muestra, con **peticiones y respuestas reales**, cómo se integran los componentes del sistema:
 la interfaz web, la API REST (FastAPI), el modelo de clasificación con OCR, la base de datos MySQL y el almacenamiento de PDFs.
 
-Todas las salidas se obtuvieron ejecutando el sistema con `docker compose up --build` el 26 de octubre de 2026, con datos ficticios.
+Todas las salidas se obtuvieron ejecutando el sistema con `docker compose up --build` el 26 de octubre de 2026, con datos ficticios. La Fase III agrega los endpoints marcados como tal (sección 2) y su evidencia al final de la sección 3.
 
 ## 1. Componentes que se integran
 
@@ -30,7 +30,11 @@ La documentación interactiva de la API se genera sola y está disponible en `/d
 | GET | `/alumnos?q=...` | Busca alumnos por nombre, CURP o matrícula |
 | GET | `/alumnos/por-curp/{curp}` | Alumno(s) con esa CURP |
 | GET | `/alumnos/{id}/destino?categoria=...` | Con qué nombre se guardaría el archivo y qué tiene ya el alumno |
-| POST | `/guardar` | Guarda un PDF revisado (`nuevo`, `reemplazar` o `adicional`) |
+| POST | `/guardar` | Guarda un PDF revisado (`nuevo`, `reemplazar`, `adicional` o `personalizado` = duplicado con nombre que lleva el id) |
+| POST | `/alumnos/{id}/curp` | **Fase III.** Corrige la CURP de un alumno en la BD (con bitácora) |
+| POST | `/respaldo/bd`, `/respaldo/archivos` | **Fase III.** Respaldo de la base de datos (.sql) o de los PDF (.zip) |
+| GET | `/respaldo/estado`, `/respaldo/descargar/{nombre}` | **Fase III.** Avance del respaldo y descarga |
+| POST | `/api/login`, `/api/logout` | **Fase III.** Contraseña de acceso (solo si se define `APP_CLAVE`) |
 | GET | `/alumnos/{id}/expediente` | Documentos del alumno |
 | GET | `/alumnos/{id}/expediente/{doc}/pdf` | Abre el PDF de un documento |
 | DELETE | `/alumnos/{id}/expediente/{doc}` | Elimina el documento (el PDF se conserva en `archivos_eliminados`) |
@@ -212,6 +216,164 @@ etag: "a0b951592091890456de24262efaf317"
 ```json
 {
     "eliminado": "1_CURP.pdf"
+}
+```
+
+### Novedades de la Fase III
+
+Salidas reales de los endpoints nuevos de la Fase III (5 de noviembre de 2026, datos ficticios).
+
+### Tipo «Duplicado» (solo manual) — `GET /tipos`
+
+La lista termina con **Duplicado**, marcado `manual: true`: la IA nunca lo propone (el PDF de un duplicado no dice que lo sea). Se muestran los dos últimos tipos.
+```bash
+curl http://localhost:8000/tipos
+```
+Respuesta (`200`):
+```json
+[
+  {
+    "categoria": "Equivalencia",
+    "tipo_bd": "EQUIVALENCIA",
+    "manual": false
+  },
+  {
+    "categoria": "Duplicado",
+    "tipo_bd": "DUPLICADO",
+    "manual": true
+  }
+]
+```
+
+### Nombre propuesto y documentos que ya tiene — `GET /alumnos/{id}/destino`
+
+Con `prefijo` (el número del alumno, que siempre va al inicio del nombre) y `sugerencia_duplicado` (la parte editable).
+```bash
+curl "http://localhost:8000/alumnos/1/destino?categoria=Certificado%20Final"
+```
+Respuesta (`200`):
+```json
+{
+  "se_guardara_como": "1_CERT FINAL_2.pdf",
+  "existentes": [
+    {
+      "id": 301,
+      "tipo_capturado": "CERT FINAL",
+      "tipo_reconocido": "Certificado Final",
+      "archivo": "1_CERT FINAL.pdf",
+      "fecha": "2026-11-06 02:01:10",
+      "pdf_existe": null
+    }
+  ],
+  "prefijo": "1_",
+  "sugerencia_duplicado": "DUPLICADO"
+}
+```
+
+### Duplicado con un nombre sin el id — `POST /guardar` (modo `personalizado`)
+
+Se **rechaza** (422): todos los PDF comparten una carpeta, así que el nombre debe empezar con el id del alumno.
+```bash
+curl -F "archivo=@ejemplos/constancia_curp_ficticia.pdf" -F id_alumno=1 -F "categoria=Certificado Final" -F modo=personalizado -F nombre=Duplicado http://localhost:8000/guardar
+```
+Respuesta (`422`):
+```json
+{
+  "detail": "El nombre debe empezar con '1_' (el numero del alumno)."
+}
+```
+
+### Duplicado con un nombre válido — `POST /guardar`
+
+
+```bash
+curl -F "archivo=@ejemplos/constancia_curp_ficticia.pdf" -F id_alumno=1 -F "categoria=Certificado Final" -F modo=personalizado -F nombre=1_DUPLICADO http://localhost:8000/guardar
+```
+Respuesta (`200`):
+```json
+{
+  "guardado_como": "1_DUPLICADO.pdf"
+}
+```
+
+### Corregir la CURP de un alumno — `POST /alumnos/{id}/curp`
+
+Solo se acepta una CURP con el dígito verificador correcto y que no tenga otro alumno (aquí se muestra el rechazo por dígito incorrecto; con una válida responde `200` con el alumno actualizado y anota el cambio en `registro_cambios_curp.csv`).
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"curp":"XXXX000101HCHXXX00"}' http://localhost:8000/alumnos/2/curp
+```
+Respuesta (`422`):
+```json
+{
+  "detail": "Esa CURP no pasa la verificacion (el digito verificador no cuadra): probablemente tiene una letra o numero mal."
+}
+```
+
+### Respaldar la base de datos — `POST /respaldo/bd`
+
+Empieza el respaldo en segundo plano.
+```bash
+curl -X POST http://localhost:8000/respaldo/bd
+```
+Respuesta (`200`):
+```json
+{
+  "activo": true,
+  "tipo": "bd",
+  "texto": "Preparando...",
+  "fraccion": null,
+  "resultado": null,
+  "error": null,
+  "respaldos": [
+    {
+      "nombre": "BD_controlescolar_prueba_2026-11-06_015600.sql",
+      "tamano": 42948,
+      "fecha": "2026-11-06 01:56"
+    }
+  ]
+}
+```
+
+### Estado del respaldo y respaldos hechos — `GET /respaldo/estado`
+
+Cuando termina, `resultado` trae las tablas y los registros copiados; el archivo se baja con `GET /respaldo/descargar/{nombre}`.
+```bash
+curl http://localhost:8000/respaldo/estado
+```
+Respuesta (`200`):
+```json
+{
+  "activo": false,
+  "tipo": "bd",
+  "texto": "Copiando la tabla 'archivos' (2 de 2)...",
+  "fraccion": 0.5,
+  "resultado": {
+    "archivo": "BD_controlescolar_prueba_2026-11-06_020111.sql",
+    "tamano": 42778,
+    "tablas": [
+      {
+        "tabla": "alumnos",
+        "filas": 101
+      },
+      {
+        "tabla": "archivos",
+        "filas": 280
+      }
+    ]
+  },
+  "error": null,
+  "respaldos": [
+    {
+      "nombre": "BD_controlescolar_prueba_2026-11-06_020111.sql",
+      "tamano": 42778,
+      "fecha": "2026-11-06 02:01"
+    },
+    {
+      "nombre": "BD_controlescolar_prueba_2026-11-06_015600.sql",
+      "tamano": 42948,
+      "fecha": "2026-11-06 01:56"
+    }
+  ]
 }
 ```
 

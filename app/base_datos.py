@@ -107,18 +107,6 @@ class BaseDatos:
         finally:
             con.close()
 
-    def alumno_por_id(self, id_alumno):
-        con = self._conectar()
-        try:
-            with con.cursor() as cur:
-                cur.execute(f"SELECT {self.COLUMNAS_ALUMNO} FROM {self.t_alumnos} WHERE id = %s", (id_alumno,))
-                fila = cur.fetchone()
-                return self._a_alumno(fila) if fila else None
-        except pymysql.MySQLError as e:
-            raise ErrorBaseDatos(f"Error al buscar el alumno: {e}") from e
-        finally:
-            con.close()
-
     def buscar_por_curp(self, curp):
         con = self._conectar()
         try:
@@ -179,6 +167,18 @@ class BaseDatos:
                 con.close()
         return self.buscar_por_nombre(texto, limite)
 
+    def alumno_por_id(self, id_alumno):
+        con = self._conectar()
+        try:
+            with con.cursor() as cur:
+                cur.execute(f"SELECT {self.COLUMNAS_ALUMNO} FROM {self.t_alumnos} WHERE id = %s", (id_alumno,))
+                fila = cur.fetchone()
+                return self._a_alumno(fila) if fila else None
+        except pymysql.MySQLError as e:
+            raise ErrorBaseDatos(f"Error al buscar el alumno: {e}") from e
+        finally:
+            con.close()
+
     def archivos_del_alumno(self, id_alumno, categoria=None):
         """Archivos registrados del alumno. Con 'categoria' filtra por tipo de documento
         reconociendo las variantes capturadas a mano ("ACT NAC" = "ACTA DE NAC")."""
@@ -196,6 +196,44 @@ class BaseDatos:
             return archivos
         except pymysql.MySQLError as e:
             raise ErrorBaseDatos(f"Error al consultar los archivos del alumno: {e}") from e
+        finally:
+            con.close()
+
+    def actualizar_curp(self, id_alumno, curp_anterior, curp_nueva):
+        """Corrige la CURP de UN alumno. Es lo unico que el sistema modifica en la tabla de alumnos.
+        Solo cambia si la CURP en la BD sigue siendo la que se vio en pantalla (nadie la cambio mientras
+        tanto) y si ninguna otra persona ya tiene la CURP nueva."""
+        con = self._conectar()
+        try:
+            with con.cursor() as cur:
+                cur.execute(
+                    f"SELECT id, nombre, apaterno, amaterno FROM {self.t_alumnos} "
+                    f"WHERE UPPER(TRIM(curp)) = %s AND id <> %s LIMIT 1",
+                    (curp_nueva, id_alumno),
+                )
+                otro = cur.fetchone()
+                if otro:
+                    raise ErrorBaseDatos(
+                        f"Esa CURP ya esta registrada en otro alumno: {' '.join(str(p) for p in otro[1:] if p)} "
+                        f"(id {otro[0]}). Revisa si el alumno esta duplicado en la base de datos."
+                    )
+                if curp_anterior:
+                    cur.execute(f"UPDATE {self.t_alumnos} SET curp = %s WHERE id = %s AND curp = %s LIMIT 1",
+                                (curp_nueva, id_alumno, curp_anterior))
+                else:
+                    cur.execute(f"UPDATE {self.t_alumnos} SET curp = %s "
+                                f"WHERE id = %s AND (curp IS NULL OR curp = '') LIMIT 1",
+                                (curp_nueva, id_alumno))
+                if cur.rowcount != 1:
+                    con.rollback()
+                    raise ErrorBaseDatos("La CURP de este alumno cambio en la base de datos mientras tanto "
+                                         "(o el alumno ya no existe). Vuelve a buscar al alumno.")
+            con.commit()
+        except pymysql.MySQLError as e:
+            con.rollback()
+            if e.args and e.args[0] == 1142:
+                raise ErrorBaseDatos("El usuario de la base de datos no tiene permiso para corregir CURPs.") from e
+            raise ErrorBaseDatos(f"Error al corregir la CURP: {e}") from e
         finally:
             con.close()
 

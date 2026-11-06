@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import almacenamiento, main
+from app.motor_ocr import digito_verificador
 
 pytestmark = pytest.mark.skipif(not os.getenv("DB_HOST"), reason="sin base de datos (DB_HOST)")
 
@@ -97,7 +98,8 @@ def test_clasificar_sin_guardar_no_escribe(cliente):
 # ---------------------------------------------------------------- flujo de revision (como la app de escritorio)
 def test_tipos_y_salud_con_conteos(cliente):
     tipos = [t["categoria"] for t in cliente.get("/tipos").json()]
-    assert tipos[:3] == ["CURP", "Certificados Secundaria", "Actas de nacimiento"] and len(tipos) == 6
+    assert tipos[:3] == ["CURP", "Certificados Secundaria", "Actas de nacimiento"] and len(tipos) == 7
+    assert tipos[-1] == "Duplicado"   # solo manual: la IA no lo detecta
     s = cliente.get("/salud").json()
     assert s["alumnos"] >= 100 and s["archivos"] >= 0 and s["base_nombre"]
 
@@ -145,3 +147,139 @@ def test_guardar_valida_entradas(cliente):
     pdf = {"archivo": ("x.pdf", b"%PDF-1.4 x", "application/pdf")}
     assert cliente.post("/guardar", data={"id_alumno": 1, "categoria": "OTRA"}, files=pdf).status_code == 422
     assert cliente.post("/guardar", data={"id_alumno": 9999, "categoria": "CURP"}, files=pdf).status_code == 404
+
+
+# ---------------------------------------------------------------- Fase III: duplicados
+def _pdf(nombre="x.pdf"):
+    return {"archivo": (nombre, (EJEMPLOS / "constancia_curp_ficticia.pdf").read_bytes(), "application/pdf")}
+
+
+def test_duplicado_con_nombre_que_lleva_el_id(cliente):
+    _limpiar_alumna_demo()
+    try:
+        # Primero el documento "normal" para que ya exista
+        assert cliente.post("/guardar", data={"id_alumno": 1, "categoria": "Certificado Final"},
+                            files=_pdf()).status_code == 200
+        d = cliente.get("/alumnos/1/destino", params={"categoria": "Certificado Final"}).json()
+        assert d["prefijo"] == "1_" and d["sugerencia_duplicado"] == "DUPLICADO" and len(d["existentes"]) == 1
+
+        # Nombres que NO sirven: sin el id del alumno, vacio, o con simbolos prohibidos
+        for malo in ("Duplicado", "1_", "", "1_a/b", "2_DUPLICADO"):
+            r = cliente.post("/guardar", data={"id_alumno": 1, "categoria": "Certificado Final",
+                                               "modo": "personalizado", "nombre": malo}, files=_pdf())
+            assert r.status_code == 422, (malo, r.text)
+
+        r = cliente.post("/guardar", data={"id_alumno": 1, "categoria": "Certificado Final",
+                                           "modo": "personalizado", "nombre": "1_DUPLICADO"}, files=_pdf())
+        assert r.status_code == 200 and r.json()["guardado_como"] == "1_DUPLICADO.pdf"
+
+        # El mismo nombre otra vez: rechazado; y la sugerencia avanza a "DUPLICADO 2"
+        r = cliente.post("/guardar", data={"id_alumno": 1, "categoria": "Certificado Final",
+                                           "modo": "personalizado", "nombre": "1_DUPLICADO"}, files=_pdf())
+        assert r.status_code == 422 and "Ya existe" in r.json()["detail"]
+        d = cliente.get("/alumnos/1/destino", params={"categoria": "Certificado Final"}).json()
+        assert d["sugerencia_duplicado"] == "DUPLICADO 2"
+        assert len(cliente.get("/alumnos/1/expediente").json()) == 2
+    finally:
+        _limpiar_alumna_demo()
+
+
+def test_categoria_duplicado_se_elige_a_mano(cliente):
+    _limpiar_alumna_demo()
+    try:
+        # No choca con "Certificado Final": un duplicado no cuenta como "ya tiene este documento"
+        assert cliente.post("/guardar", data={"id_alumno": 1, "categoria": "Certificado Final"},
+                            files=_pdf()).status_code == 200
+        d = cliente.get("/alumnos/1/destino", params={"categoria": "Duplicado"}).json()
+        assert d["existentes"] == [] and d["se_guardara_como"] == "1_DUPLICADO.pdf"
+        r1 = cliente.post("/guardar", data={"id_alumno": 1, "categoria": "Duplicado"}, files=_pdf())
+        r2 = cliente.post("/guardar", data={"id_alumno": 1, "categoria": "Duplicado"}, files=_pdf())
+        assert (r1.status_code, r2.status_code) == (200, 200)
+        assert [r1.json()["guardado_como"], r2.json()["guardado_como"]] == ["1_DUPLICADO.pdf", "1_DUPLICADO_2.pdf"]
+        tipos_bd = {d["tipo_capturado"] for d in cliente.get("/alumnos/1/expediente").json()}
+        assert tipos_bd == {"CERT FINAL", "DUPLICADO"}
+    finally:
+        _limpiar_alumna_demo()
+
+
+# ---------------------------------------------------------------- Fase III: corregir CURP
+def test_corregir_curp(cliente):
+    alumno = next(a for a in cliente.get("/alumnos", params={"q": "CARRASCO"}).json() if a["id"] == 2)
+    curp_vieja = alumno["curp"]
+    base17 = "ZZZZ000101HCHXXX0"
+    nueva = base17 + digito_verificador(base17)
+    try:
+        # CURP con digito verificador incorrecto o formato malo: no se acepta
+        malo = nueva[:-1] + ("0" if nueva[-1] != "0" else "1")
+        assert cliente.post("/alumnos/2/curp", json={"curp": malo}).status_code == 422
+        assert cliente.post("/alumnos/2/curp", json={"curp": "XXXX"}).status_code == 422
+        # La de otro alumno: se rechaza (la CURP es unica)
+        assert cliente.post("/alumnos/2/curp", json={"curp": CURP_DEMO}).status_code == 409
+        # Alumno inexistente
+        assert cliente.post("/alumnos/99999/curp", json={"curp": nueva}).status_code == 404
+
+        r = cliente.post("/alumnos/2/curp", json={"curp": nueva.lower()})
+        assert r.status_code == 200 and r.json()["curp"] == nueva
+        assert cliente.get(f"/alumnos/por-curp/{nueva}").json()[0]["id"] == 2
+        assert cliente.post("/alumnos/2/curp", json={"curp": nueva}).status_code == 422   # ya es esa
+        bitacora = Path(main.CONFIG_BD.carpeta_expedientes).parent / "registro_cambios_curp.csv"
+        texto = bitacora.read_text(encoding="utf-8-sig")
+        assert curp_vieja in texto and nueva in texto
+    finally:
+        main.estado["bd"].actualizar_curp(2, nueva, curp_vieja)   # deja la base como estaba
+    assert cliente.get(f"/alumnos/por-curp/{curp_vieja}").json()[0]["id"] == 2
+
+
+# ---------------------------------------------------------------- Fase III: respaldos
+def _esperar_fin(cliente, segundos=60):
+    import time
+    fin = time.time() + segundos
+    while time.time() < fin:
+        e = cliente.get("/respaldo/estado").json()
+        if not e["activo"]:
+            return e
+        time.sleep(0.3)
+    pytest.fail("El respaldo no termino a tiempo")
+
+
+def test_respaldos_deshabilitados_sin_carpeta(cliente, monkeypatch):
+    monkeypatch.setattr(main, "RESPALDOS_DIR", "")
+    assert cliente.post("/respaldo/bd").status_code == 404
+    assert cliente.get("/respaldo/estado").status_code == 404
+    assert cliente.get("/salud").json()["respaldos"] is False
+
+
+def test_respaldo_de_la_base_de_datos(cliente, tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "RESPALDOS_DIR", str(tmp_path / "respaldos"))
+    assert cliente.get("/salud").json()["respaldos"] is True
+    assert cliente.post("/respaldo/bd").status_code == 200
+    e = _esperar_fin(cliente)
+    assert e["error"] is None, e
+    r = e["resultado"]
+    tablas = {t["tabla"]: t["filas"] for t in r["tablas"]}
+    assert tablas["alumnos"] >= 100 and "archivos" in tablas
+    assert [x["nombre"] for x in e["respaldos"]] == [r["archivo"]]
+
+    sql = cliente.get(f"/respaldo/descargar/{r['archivo']}")
+    assert sql.status_code == 200 and "CREATE TABLE" in sql.text and "EJEMPLO" in sql.text
+    # Solo se descargan respaldos hechos por el sistema (nada de rutas ni otros archivos)
+    assert cliente.get("/respaldo/descargar/passwd").status_code == 404
+    assert cliente.get("/respaldo/descargar/..%2f..%2fetc%2fpasswd").status_code == 404
+
+
+def test_respaldo_de_archivos_en_zip(cliente, tmp_path, monkeypatch):
+    import zipfile
+    _limpiar_alumna_demo()
+    monkeypatch.setattr(main, "RESPALDOS_DIR", str(tmp_path / "respaldos"))
+    try:
+        assert cliente.post("/guardar", data={"id_alumno": 1, "categoria": "CURP"}, files=_pdf()).status_code == 200
+        assert cliente.post("/respaldo/archivos").status_code == 200
+        e = _esperar_fin(cliente)
+        assert e["error"] is None, e
+        ruta = tmp_path / "respaldos" / e["resultado"]["archivo"]
+        assert ruta.suffix in (".zip", ".rar") and e["resultado"]["archivos"] >= 1
+        if ruta.suffix == ".zip":
+            z = zipfile.ZipFile(ruta)
+            assert z.testzip() is None and any(n.endswith("1_CURP.pdf") for n in z.namelist())
+    finally:
+        _limpiar_alumna_demo()

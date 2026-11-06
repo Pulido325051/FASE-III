@@ -7,25 +7,41 @@
 <style>
   :root { --fondo:#f0f0f0; --panel:#fff; --texto:#1b1b1b; --suave:#6b6b6b; --borde:#c9c9c9;
           --acento:#1a5490; --mal:#b00000; --aviso:#a05a00; --cab:#e9edf2;
-          --listo:#d9f2d9; --revisar:#fff2cc; --guardado:#d0e4f7; --error:#f8d0d0; --sel:#cde4fb; }
+          --listo:#d9f2d9; --revisar:#fff2cc; --yacargado:#bfeaf0; --guardado:#d0e4f7; --error:#f8d0d0; --sel:#cde4fb;
+          /* tonos suaves de los botones */
+          --b-azul:#dce9f7; --b-verde:#d9f0d9; --b-amarillo:#fff0c2; --b-turquesa:#c9edf1;
+          --b-lila:#e7e2f6; --b-durazno:#fbe2cc; --b-rosa:#f7dcdc; --b-menta:#d9efe6; --b-texto:#222; }
   @media (prefers-color-scheme: dark) {
     :root { --fondo:#1a1d22; --panel:#23272e; --texto:#e8e8e8; --suave:#9aa0aa; --borde:#3a3f48;
             --acento:#7db3ee; --mal:#f08a80; --aviso:#e6b05a; --cab:#2c313a;
-            --listo:#24402b; --revisar:#4a4222; --guardado:#233a52; --error:#4d2626; --sel:#2f4a6b; } }
+            --listo:#24402b; --revisar:#4a4222; --yacargado:#1f4f56; --guardado:#233a52; --error:#4d2626; --sel:#2f4a6b;
+            --b-azul:#2a4260; --b-verde:#274a2d; --b-amarillo:#54491f; --b-turquesa:#1f4f56;
+            --b-lila:#3a3560; --b-durazno:#5a3f24; --b-rosa:#5a2b2b; --b-menta:#244a40; --b-texto:#e8e8e8; } }
   * { box-sizing:border-box; }
   html, body { height:100%; }
   body { margin:0; font:14px/1.35 "Segoe UI",system-ui,sans-serif; background:var(--fondo); color:var(--texto);
          display:flex; flex-direction:column; }
   .barra { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:10px; }
+  .barra.segunda { padding-top:0; }
   .sep { width:12px; }
   .derecha { margin-left:auto; }
   button { padding:5px 12px; border:1px solid var(--borde); border-radius:3px; background:var(--panel);
            color:var(--texto); font:inherit; cursor:pointer; }
-  button:hover:enabled { border-color:var(--acento); background:var(--cab); }
+  button:not([class*="bt-"]):hover:enabled { border-color:var(--acento); background:var(--cab); }
   button:disabled { opacity:.45; cursor:default; }
+  button[hidden] { display:none; }
   button.principal { background:var(--acento); border-color:var(--acento); color:#fff; }
   button.peligro { color:var(--mal); }
+  /* botones con un tono suave de color (el color indica para que sirven) */
+  button[class*="bt-"] { color:var(--b-texto); border-color:color-mix(in srgb, var(--b-texto) 14%, transparent); }
+  button[class*="bt-"]:hover:enabled { filter:brightness(.94); border-color:color-mix(in srgb, var(--b-texto) 30%, transparent); }
+  .bt-azul { background:var(--b-azul); } .bt-verde { background:var(--b-verde); }
+  .bt-amarillo { background:var(--b-amarillo); } .bt-turquesa { background:var(--b-turquesa); }
+  .bt-lila { background:var(--b-lila); } .bt-durazno { background:var(--b-durazno); }
+  .bt-rosa { background:var(--b-rosa); } .bt-menta { background:var(--b-menta); }
   .suave { color:var(--suave); }
+  .leyenda { display:flex; flex-wrap:wrap; gap:4px; align-items:center; font-size:12px; }
+  .leyenda span.c { padding:1px 8px; border-radius:3px; color:var(--b-texto); }
   .ayuda { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:0 10px; }
   .ayuda .resalta { color:var(--acento); }
   progress { width:220px; height:14px; margin-left:auto; }
@@ -38,6 +54,7 @@
   td { padding:3px 8px; border-bottom:1px solid color-mix(in srgb,var(--borde) 50%,transparent); height:24px; }
   tbody tr { cursor:default; }
   tr.Listo { background:var(--listo); } tr.Revisar { background:var(--revisar); }
+  tr.YaCargado { background:var(--yacargado); }
   tr.Guardado { background:var(--guardado); } tr.Error { background:var(--error); }
   tr.falta { background:var(--error); }
   tr.sel { outline:2px solid var(--acento); outline-offset:-2px; }
@@ -45,13 +62,13 @@
   legend { padding:0 4px; }
   .rejilla { display:grid; grid-template-columns:max-content 1fr auto; gap:6px 10px; align-items:center; }
   .rejilla > .etq { color:var(--texto); }
-  input[type=text], select { padding:4px 6px; border:1px solid var(--borde); border-radius:3px; background:var(--panel);
-                             color:var(--texto); font:inherit; min-width:0; }
+  input[type=text], input[type=password], select { padding:4px 6px; border:1px solid var(--borde); border-radius:3px;
+                             background:var(--panel); color:var(--texto); font:inherit; min-width:0; }
   #curp { font-family:Consolas,monospace; font-size:15px; width:220px; text-transform:uppercase; }
   .fila-curp { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
   .negrita { font-weight:600; }
   .azul { color:var(--acento); }
-  #mensaje { color:var(--aviso); grid-column:1 / -1; min-height:1.3em; }
+  #mensaje { color:var(--aviso); font-weight:600; grid-column:1 / -1; min-height:1.3em; }
   .acciones { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   dialog { border:1px solid var(--borde); border-radius:4px; background:var(--fondo); color:var(--texto);
            padding:14px; width:min(960px,96vw); }
@@ -62,6 +79,8 @@
   dialog .pie { display:flex; gap:6px; justify-content:flex-end; align-items:center; margin-top:10px; flex-wrap:wrap; }
   dialog .tabla-scroll { max-height:34vh; }
   .texto-dialogo { white-space:pre-wrap; line-height:1.5; }
+  .mono { font-family:Consolas,monospace; font-size:15px; font-weight:700; color:var(--acento); }
+  .error-txt { color:var(--mal); min-height:1.3em; margin-top:6px; }
   #pie-app { padding:0 10px 8px; color:var(--suave); font-size:12px; }
   #pie-app a { color:var(--acento); }
   .arrastrando main { outline:3px dashed var(--acento); outline-offset:-6px; }
@@ -70,13 +89,27 @@
 </head>
 <body>
   <div class="barra">
-    <button id="b-pdfs">Agregar PDFs...</button>
-    <button id="b-carpeta">Agregar carpeta...</button>
-    <button id="b-todos">Guardar todos los 'Listo'</button>
-    <button id="b-quitar-guardados">Quitar guardados de la lista</button>
+    <button id="b-pdfs" class="bt-azul">Agregar PDFs...</button>
+    <button id="b-carpeta" class="bt-azul">Agregar carpeta...</button>
+    <button id="b-todos" class="bt-verde">Guardar todos los 'Listo'</button>
     <span class="sep"></span>
-    <button id="b-consultar">Consultar expediente...</button>
+    <button id="b-consultar" class="bt-lila">Consultar expediente...</button>
+    <button id="b-respaldos" class="bt-menta" hidden>Respaldos...</button>
     <span id="conexion" class="derecha suave">Conectando a la base de datos...</span>
+    <span id="usuario-sesion" class="suave" hidden></span>
+    <button id="b-salir" hidden>Salir</button>
+  </div>
+  <div class="barra segunda">
+    <span class="suave">Limpiar la lista:</span>
+    <button id="b-quitar-guardados" class="bt-azul">Quitar los guardados</button>
+    <button id="b-quitar-ya" class="bt-turquesa">Quitar los que ya están cargados</button>
+    <button id="b-quitar-nobd" class="bt-amarillo">Quitar los que no están en la BD</button>
+    <span class="derecha leyenda"><span class="suave">Colores:</span>
+      <span class="c" style="background:var(--listo)">Listo</span>
+      <span class="c" style="background:var(--revisar)">Revisar</span>
+      <span class="c" style="background:var(--yacargado)">Ya tiene ese documento</span>
+      <span class="c" style="background:var(--guardado)">Guardado</span>
+      <span class="c" style="background:var(--error)">Error</span></span>
   </div>
   <div class="ayuda">
     <span id="ayuda" class="suave">Arrastra aquí los PDF o carpetas (a cualquier parte de la ventana), o usa 'Agregar PDFs'.</span>
@@ -98,7 +131,7 @@
       <legend>Documento seleccionado</legend>
       <div class="rejilla">
         <span class="etq">Archivo:</span><span id="d-archivo">-</span>
-        <button id="b-abrir-pdf" disabled>Abrir PDF</button>
+        <button id="b-abrir-pdf" class="bt-lila" disabled>Abrir PDF</button>
 
         <span class="etq">Tipo de documento:</span>
         <span><select id="d-tipo" disabled></select> <span id="d-confianza" class="suave"></span></span><span></span>
@@ -106,8 +139,9 @@
         <span class="etq">CURP:</span>
         <div class="fila-curp">
           <input id="curp" type="text" maxlength="18" disabled autocomplete="off" spellcheck="false">
-          <button id="b-buscar-curp" disabled>Buscar alumno por CURP</button>
-          <button id="b-buscar-nombre" disabled>Buscar por nombre...</button>
+          <button id="b-buscar-curp" class="bt-azul" disabled>Buscar alumno por CURP</button>
+          <button id="b-buscar-nombre" class="bt-azul" disabled>Buscar por nombre...</button>
+          <button id="b-corregir-curp" class="bt-durazno" disabled>Corregir CURP del alumno en la BD...</button>
           <span id="d-verif"></span>
         </div><span></span>
 
@@ -117,15 +151,15 @@
         <div id="mensaje"></div>
       </div>
       <div class="acciones">
-        <button id="b-guardar" class="principal" disabled>Guardar en expediente</button>
-        <button id="b-ver-exp" disabled>Ver expediente del alumno</button>
+        <button id="b-guardar" class="bt-verde" disabled>Guardar en expediente</button>
+        <button id="b-ver-exp" class="bt-lila" disabled>Ver expediente del alumno</button>
         <span class="derecha"></span>
-        <button id="b-quitar" disabled>Quitar de la lista</button>
+        <button id="b-quitar" class="bt-rosa" disabled>Quitar de la lista</button>
       </div>
     </fieldset>
   </main>
   <div id="pie-app">
-    Base de datos de prueba con datos ficticios · <a href="/docs" target="_blank">API (/docs)</a> ·
+    FASE III · Base de datos de prueba con datos ficticios · <a href="/docs" target="_blank">API (/docs)</a> ·
     Los PDF se leen en archivos temporales que se borran al terminar.
   </div>
 
@@ -160,8 +194,54 @@
     </fieldset>
     <div class="pie"><span class="suave" style="margin-right:auto">Doble clic en un documento para abrirlo.</span>
       <button id="e-eliminar" class="peligro" disabled>Eliminar documento...</button>
-      <button id="e-abrir" disabled>Abrir PDF</button>
+      <button id="e-abrir" class="bt-lila" disabled>Abrir PDF</button>
       <button id="e-cerrar">Cerrar</button></div>
+  </dialog>
+
+  <!-- Duplicado: nombre del archivo nuevo (el id del alumno va fijo al inicio) -->
+  <dialog id="dlg-dupnombre" style="width:min(560px,96vw)">
+    <h3>Nombre del archivo nuevo</h3>
+    <div id="dn-quien" class="negrita"></div>
+    <p style="margin:10px 0 6px">Escribe cómo quieres llamar al archivo nuevo. El número del alumno va siempre al principio
+      (no se puede quitar) y el .pdf se agrega solo:</p>
+    <div class="fila" style="flex-wrap:nowrap"><span id="dn-prefijo" class="mono"></span>
+      <input id="dn-nombre" type="text" autocomplete="off" spellcheck="false"><span>.pdf</span></div>
+    <div id="dn-ejemplo" class="suave"></div>
+    <div id="dn-error" class="error-txt"></div>
+    <div class="pie"><button id="dn-guardar" class="bt-verde">Guardar con este nombre</button>
+      <button id="dn-cancelar">Cancelar</button></div>
+  </dialog>
+
+  <!-- Respaldos -->
+  <dialog id="dlg-resp" style="width:min(720px,96vw)">
+    <h3>Respaldos</h3>
+    <p class="suave" style="margin:0 0 10px">Los respaldos se guardan en el servidor (carpeta <b>expedientes/respaldos</b>) y
+      desde aquí los puedes descargar. Contienen datos personales: guárdalos en un lugar seguro.</p>
+    <div style="margin-bottom:12px"><b>1. Base de datos</b>
+      <div class="suave">Copia de todos los alumnos y registros de archivos en un solo archivo (.sql). Tarda menos de un minuto.</div>
+      <button id="r-bd" class="bt-menta" style="margin-top:6px">Respaldar la base de datos</button></div>
+    <div style="margin-bottom:12px"><b>2. Archivos (PDF de los expedientes)</b>
+      <div class="suave">Copia de todos los PDF guardados en un solo archivo (.zip). Puede tardar según la cantidad de archivos.</div>
+      <button id="r-archivos" class="bt-azul" style="margin-top:6px">Respaldar los archivos</button></div>
+    <progress id="r-barra" value="0" max="1" style="width:100%"></progress>
+    <div id="r-estado" style="margin:6px 0 10px">Listo para respaldar.</div>
+    <b>Respaldos hechos</b>
+    <div class="tabla-scroll" style="max-height:24vh;margin-top:4px"><table>
+      <thead><tr><th>Archivo</th><th>Tamaño</th><th>Fecha</th><th></th></tr></thead>
+      <tbody id="r-lista"></tbody></table></div>
+    <div class="pie"><button id="r-cancelar" class="bt-rosa" disabled>Cancelar respaldo</button>
+      <button id="r-cerrar">Cerrar</button></div>
+  </dialog>
+
+  <!-- Entrar (solo si el servidor tiene contrasena) -->
+  <dialog id="dlg-login" style="width:min(420px,96vw)">
+    <h3>Entrar al sistema</h3>
+    <div class="fila"><label for="l-usuario" style="width:90px">Tu nombre:</label>
+      <input id="l-usuario" type="text" autocomplete="username"></div>
+    <div class="fila"><label for="l-clave" style="width:90px">Contraseña:</label>
+      <input id="l-clave" type="password" autocomplete="current-password" style="flex:1"></div>
+    <div id="l-error" class="error-txt"></div>
+    <div class="pie"><button id="l-entrar" class="principal">Entrar</button></div>
   </dialog>
 
   <!-- Confirmaciones -->
@@ -180,8 +260,9 @@ const EN_COLA = "En cola", LEYENDO = "Leyendo...", LISTO = "Listo", REVISAR = "R
 const OCUPADO = [EN_COLA, LEYENDO, GUARDANDO, GUARDADO];
 const ORDEN_PRIORITARIO = ["CURP", "Certificados Secundaria", "Actas de nacimiento"];
 
-let tipos = [];            // [{categoria, tipo_bd}] en el orden de la app
+let tipos = [];            // [{categoria, tipo_bd, manual}] en el orden de la app
 let hayBD = false;
+let hayRespaldos = false;
 let docs = [];             // documentos de la lista
 let sel = null;            // documento seleccionado
 let contador = 0;
@@ -190,6 +271,7 @@ const MAX_LECTORES = 2;    // el servidor procesa 2 a la vez (MAX_CONCURRENCIA)
 
 const ordenTipo = (c) => { const i = ORDEN_PRIORITARIO.indexOf(c); if (i >= 0) return i;
   const j = tipos.findIndex(t => t.categoria === c); return j >= 0 ? ORDEN_PRIORITARIO.length + j : 99; };
+const tipoValido = (c) => tipos.some(t => t.categoria === c);
 
 // ------------------------------------------------------------------ CURP
 const DICC = "0123456789ABCDEFGHIJKLMNÑOPQRSTUVWXYZ";
@@ -199,24 +281,17 @@ function curpVerificada(c) {
   let s = 0; for (let i = 0; i < 17; i++) s += DICC.indexOf(c[i]) * (18 - i);
   return String((10 - (s % 10)) % 10) === c[17];
 }
-function similitud(a, b) {   // fraccion de palabras de a que aparecen (aprox.) en b, sin importar el orden
-  const pa = a.toUpperCase().split(/\s+/).filter(Boolean), pb = b.toUpperCase().split(/\s+/).filter(Boolean);
-  if (!pa.length || !pb.length) return 0;
-  const parecido = (x, y) => { // proporcion de coincidencia por distancia de edicion
-    const m = x.length, n = y.length; if (!m || !n) return 0;
-    let prev = Array.from({length: n + 1}, (_, j) => j);
-    for (let i = 1; i <= m; i++) { const cur = [i];
-      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (x[i-1] === y[j-1] ? 0 : 1));
-      prev = cur; }
-    return 1 - prev[n] / Math.max(m, n); };
-  return pa.filter(p => pb.some(q => parecido(p, q) >= 0.8)).length / pa.length;
-}
 
 // ------------------------------------------------------------------ llamadas
 async function api(url, opciones) {
   const r = await fetch(url, opciones);
   let j = null; try { j = await r.json(); } catch {}
-  if (!r.ok) throw new Error((j && j.detail) ? (typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail)) : `Error ${r.status}`);
+  if (!r.ok) {
+    const e = new Error((j && j.detail) ? (typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail)) : `Error ${r.status}`);
+    e.status = r.status;
+    if (r.status === 401 && !url.startsWith("/api/login")) pedirLogin();   // la sesion termino
+    throw e;
+  }
   return j;
 }
 
@@ -237,8 +312,8 @@ const aviso = (titulo, texto) => confirmar(titulo, texto, [{txt: "Aceptar", valo
 
 // ------------------------------------------------------------------ evaluacion (igual que la app de escritorio)
 function evaluar(d) {
-  const avisos = [];
-  if (!tipos.some(t => t.categoria === d.categoria)) avisos.push(`El tipo '${d.categoria}' no está configurado.`);
+  const avisos = [], notas = [];
+  if (!tipoValido(d.categoria)) avisos.push(`El tipo '${d.categoria}' no está configurado.`);
   if (d.confianza != null && d.confianza < 0.6) avisos.push(`Tipo dudoso (${Math.round(d.confianza * 100)}%): confirma el tipo de documento.`);
   if (hayBD) {
     if (!d.alumno) {
@@ -246,13 +321,54 @@ function evaluar(d) {
       else if (!d.curp) avisos.push("No se pudo leer la CURP: escríbela o busca al alumno por nombre.");
       else avisos.push("La CURP no está en la base de datos: corrígela o busca por nombre.");
     } else if (!d.confirmado) {
-      if (d.porNombre) avisos.push("Alumno encontrado por NOMBRE (no por CURP): confirma que sea la persona correcta.");
-      else if (d.nombreOcr && similitud(d.nombreOcr, d.alumno.nombre_completo) < 0.6)
+      if (d.porNombre) {
+        // Sin CURP pero con el nombre completo (y la fecha, si se leyó) no hace falta revisar a mano
+        if (d.motivoNombre) avisos.push(d.motivoNombre);
+        else notas.push("Encontrado por nombre (el documento no trae CURP).");
+      } else if (d.nombreOcr && similitud(d.nombreOcr, d.alumno.nombre_completo) < 0.6)
         avisos.push("El nombre del documento no coincide con el del alumno en la BD: revisa.");
     }
   }
-  d.mensaje = avisos.join(" ");
+  d.avisoConfirmar = avisos.join(" ");
+  if (d.alumno && d.yaCargados.length) {
+    const nombres = d.yaCargados.slice(-2).map(a => a.archivo).join(", ");
+    avisos.push(`YA TIENE este documento cargado (${nombres}). Al darle Guardar podrás elegir si lo guardas también con otro nombre o cambias el anterior.`);
+  }
+  d.mensaje = [...avisos, ...notas].join(" ");
   d.estado = avisos.length ? REVISAR : LISTO;
+}
+function similitud(a, b) {   // fraccion de palabras de a que aparecen (aprox.) en b, sin importar el orden
+  const pa = a.toUpperCase().split(/\s+/).filter(Boolean), pb = b.toUpperCase().split(/\s+/).filter(Boolean);
+  if (!pa.length || !pb.length) return 0;
+  const parecido = (x, y) => { // proporcion de coincidencia por distancia de edicion
+    const m = x.length, n = y.length; if (!m || !n) return 0;
+    let prev = Array.from({length: n + 1}, (_, j) => j);
+    for (let i = 1; i <= m; i++) { const cur = [i];
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (x[i-1] === y[j-1] ? 0 : 1));
+      prev = cur; }
+    return 1 - prev[n] / Math.max(m, n); };
+  return pa.filter(p => pb.some(q => parecido(p, q) >= 0.8)).length / pa.length;
+}
+
+// Destino (nombre propuesto, lo que ya tiene el alumno) para el alumno y tipo actuales; se guarda en el documento
+async function cargarDestino(d) {
+  const clave = `${d.alumno.id}|${d.categoria}`;
+  if (!d.destino || d.destino.clave !== clave) {
+    const r = await api(`/alumnos/${d.alumno.id}/destino?categoria=${encodeURIComponent(d.categoria)}`);
+    d.destino = {clave, ...r};
+  }
+  return d.destino;
+}
+// Despues de cambiar a mano el alumno o el tipo: ¿ya tiene el alumno ese documento?
+async function revisarYaCargados(d) {
+  d.yaCargados = []; d.destino = null;
+  if (d.alumno && tipoValido(d.categoria)) {
+    const alumno = d.alumno, categoria = d.categoria;
+    try { const r = await cargarDestino(d);
+      if (d.alumno !== alumno || d.categoria !== categoria || OCUPADO.includes(d.estado)) return;
+      d.yaCargados = r.existentes; } catch {}
+  }
+  evaluar(d); refrescar(d);
 }
 
 // ------------------------------------------------------------------ lista
@@ -262,19 +378,26 @@ function agregar(archivos) {
   let nuevos = 0;
   for (const f of archivos) {
     if (!f.name.toLowerCase().endsWith(".pdf") || existentes.has(clave(f))) continue;
-    docs.push({id: ++contador, file: f, estado: EN_COLA, categoria: "", confianza: null, curp: "", nombreOcr: "",
-               alumno: null, avisoBd: "", porNombre: false, confirmado: false, mensaje: "", guardadoComo: "", destino: null});
+    docs.push({id: ++contador, file: f, estado: EN_COLA, categoria: "", confianza: null, curp: "", nombreOcr: "", fecha: "",
+               alumno: null, avisoBd: "", porNombre: false, motivoNombre: null, confirmado: false, mensaje: "",
+               avisoConfirmar: "", yaCargados: [], guardadoComo: "", destino: null});
     existentes.add(clave(f)); nuevos++;
   }
   if (nuevos && !sel) sel = docs[0];
   pintarLista(); bombear();
 }
 
+function claseFila(d) {
+  if (d.estado === LEYENDO || d.estado === EN_COLA || d.estado === GUARDANDO) return "";
+  if (d.estado === REVISAR && d.alumno && d.yaCargados.length) return "YaCargado";   // turquesa: ya tiene ese documento
+  return d.estado;
+}
+
 function pintarLista() {
   $("lista").innerHTML = docs.map(d => {
     const alumno = d.alumno ? `${d.alumno.nombre_completo} (${d.alumno.matricula})` : "";
     const nota = d.estado === GUARDADO ? d.guardadoComo : d.mensaje;
-    return `<tr data-id="${d.id}" class="${d.estado === LEYENDO || d.estado === EN_COLA || d.estado === GUARDANDO ? "" : d.estado} ${sel === d ? "sel" : ""}">
+    return `<tr data-id="${d.id}" class="${claseFila(d)} ${sel === d ? "sel" : ""}">
       <td>${esc(d.file.name)}</td><td>${esc(d.estado)}</td><td>${esc(d.categoria)}</td><td>${esc(d.curp)}</td>
       <td>${esc(alumno)}</td><td>${esc(nota)}</td></tr>`;
   }).join("");
@@ -312,8 +435,10 @@ async function leer(d) {
     const j = await api("/clasificar", {method: "POST", body: datos});
     if (!docs.includes(d)) return;
     d.categoria = j.tipo_documento; d.confianza = j.confianza;
-    d.curp = j.curp || ""; d.nombreOcr = j.nombre || "";
+    d.curp = j.curp || ""; d.nombreOcr = j.nombre || ""; d.fecha = j.fecha_nacimiento || "";
     d.alumno = j.alumno || null; d.porNombre = j.encontrado_por === "nombre"; d.avisoBd = j.aviso_bd || "";
+    d.motivoNombre = j.motivo_revision_nombre ?? null;
+    d.yaCargados = d.alumno ? (j.documentos_del_mismo_tipo || []) : [];   // ¿el alumno ya tiene este documento?
     evaluar(d);
   } catch (e) {
     if (!docs.includes(d)) return;
@@ -328,6 +453,7 @@ function pintarDetalle() {
   const libre = d && !OCUPADO.includes(d.estado);
   $("d-tipo").disabled = !libre; $("curp").disabled = !libre || !hayBD;
   $("b-buscar-curp").disabled = !libre || !hayBD; $("b-buscar-nombre").disabled = !libre || !hayBD;
+  $("b-corregir-curp").disabled = !(hayBD && d && d.alumno && [LISTO, REVISAR, ERROR].includes(d.estado));
   $("b-quitar").disabled = !d || d.estado === LEYENDO || d.estado === GUARDANDO;
   $("b-abrir-pdf").disabled = !d;
   if (!d) {
@@ -337,7 +463,12 @@ function pintarDetalle() {
   }
   $("d-archivo").textContent = d.file.name;
   if (d.categoria) $("d-tipo").value = d.categoria; else $("d-tipo").selectedIndex = -1;
-  $("d-confianza").textContent = d.confianza ? `confianza del modelo: ${Math.round(d.confianza * 100)}%` : "";
+  let conf = d.confianza ? `confianza del modelo: ${Math.round(d.confianza * 100)}%` : "";
+  if (d.categoria === "Duplicado") conf = "Elegido a mano: se guardará como DUPLICADO";
+  else if (d.categoria === "Certificado Final" && ![GUARDADO, GUARDANDO].includes(d.estado))
+    // El PDF de un duplicado no dice que lo sea: la IA lo ve como certificado de termino
+    conf = (conf ? conf + "   |   " : "") + "¿Es un duplicado? Cámbialo en «Tipo de documento»";
+  $("d-confianza").textContent = conf;
   if (document.activeElement !== $("curp")) $("curp").value = d.curp;
   const v = $("d-verif");
   if (d.curp) { const ok = curpVerificada(d.curp); v.textContent = ok ? "dígito verificador OK" : "dígito verificador NO coincide";
@@ -347,7 +478,7 @@ function pintarDetalle() {
   if (d.alumno) { a.textContent = `${d.alumno.nombre_completo}  |  CURP ${d.alumno.curp}  |  Matrícula ${d.alumno.matricula}  |  ${d.alumno.generacion}`; a.style.color = ""; }
   else { a.textContent = hayBD ? "(sin alumno asociado)" : "(sin base de datos)"; a.style.color = hayBD ? "var(--mal)" : ""; }
   $("mensaje").textContent = d.estado !== GUARDADO ? d.mensaje : "";
-  const puede = hayBD && (d.estado === LISTO || d.estado === REVISAR) && d.alumno && tipos.some(t => t.categoria === d.categoria);
+  const puede = hayBD && (d.estado === LISTO || d.estado === REVISAR) && d.alumno && tipoValido(d.categoria);
   $("b-guardar").disabled = !puede; $("b-ver-exp").disabled = !d.alumno;
   pintarDestino(d);
 }
@@ -355,25 +486,52 @@ function pintarDetalle() {
 async function pintarDestino(d) {
   const el = $("d-destino");
   if (d.estado === GUARDADO) { el.textContent = d.guardadoComo; return; }
-  if (!d.alumno || !tipos.some(t => t.categoria === d.categoria)) { el.textContent = "-"; return; }
+  if (!d.alumno || !tipoValido(d.categoria)) { el.textContent = "-"; return; }
   const clave = `${d.alumno.id}|${d.categoria}`;
-  if (!d.destino || d.destino.clave !== clave) {
-    el.textContent = "...";
-    try { const r = await api(`/alumnos/${d.alumno.id}/destino?categoria=${encodeURIComponent(d.categoria)}`);
-      d.destino = {clave, nombre: r.se_guardara_como}; } catch { d.destino = null; }
-  }
-  if (sel === d) el.textContent = d.destino ? d.destino.nombre : "-";
+  if (!d.destino || d.destino.clave !== clave) el.textContent = "...";
+  try { await cargarDestino(d); } catch { d.destino = null; }
+  if (sel === d) el.textContent = d.destino ? d.destino.se_guardara_como : "-";
 }
 
 $("d-tipo").onchange = () => {
   const d = sel; if (!d || OCUPADO.includes(d.estado)) return pintarDetalle();
-  d.categoria = $("d-tipo").value; d.confianza = null; d.destino = null; evaluar(d); refrescar(d);
+  d.categoria = $("d-tipo").value; d.confianza = null; d.destino = null; d.yaCargados = [];
+  evaluar(d); refrescar(d); revisarYaCargados(d);
 };
 $("b-abrir-pdf").onclick = () => { if (sel) window.open(URL.createObjectURL(sel.file), "_blank"); };
 $("b-quitar").onclick = () => { if (!sel || sel.estado === LEYENDO || sel.estado === GUARDANDO) return;
   docs = docs.filter(d => d !== sel); sel = null; pintarLista(); pintarDetalle(); };
-$("b-quitar-guardados").onclick = () => { docs = docs.filter(d => d.estado !== GUARDADO);
-  if (sel && !docs.includes(sel)) sel = null; pintarLista(); pintarDetalle(); };
+
+// ------------------------------------------------------------------ limpiar la lista (no borra nada del expediente)
+function quitar(lista) {
+  docs = docs.filter(d => !lista.includes(d));
+  if (sel && !docs.includes(sel)) sel = null; pintarLista(); pintarDetalle();
+}
+function muestra(lista, extra) {
+  const filas = lista.slice(0, 10).map(d => `   ${d.file.name}  ->  ${extra(d)}`);
+  if (lista.length > 10) filas.push(`   ... y ${lista.length - 10} más`);
+  return filas.join("\n");
+}
+$("b-quitar-guardados").onclick = () => quitar(docs.filter(d => d.estado === GUARDADO));
+$("b-quitar-ya").onclick = async () => {
+  const lista = docs.filter(d => d.estado === REVISAR && d.alumno && d.yaCargados.length);
+  if (!lista.length) return aviso("Quitar", "No hay documentos en 'Revisar' cuyo alumno ya tenga ese documento cargado.");
+  const ok = await si_no("Quitar los que ya están cargados",
+    `${lista.length} documento(s) en 'Revisar' pertenecen a alumnos que YA tienen ese tipo de documento cargado:\n\n` +
+    muestra(lista, d => `${d.alumno.nombre_completo}  [${d.categoria}]`) +
+    "\n\n¿Quitarlos de la lista?\n(Solo se quitan de esta pantalla: no se borra nada del expediente ni se modifican tus PDF originales.)");
+  if (ok) quitar(lista);
+};
+$("b-quitar-nobd").onclick = async () => {
+  const lista = docs.filter(d => d.estado === REVISAR && !d.alumno && d.curp && !d.avisoBd);
+  if (!lista.length) return aviso("Quitar", "No hay documentos en 'Revisar' cuya CURP no esté en la base de datos.");
+  const ok = await si_no("Quitar los que no están en la BD",
+    `${lista.length} documento(s) en 'Revisar' tienen una CURP que NO está en la base de datos y no se asociaron a ningún alumno:\n\n` +
+    muestra(lista, d => `CURP ${d.curp}`) +
+    "\n\n¿Quitarlos de la lista?\n(Solo se quitan de esta pantalla: no se guarda ni se borra nada, y tus PDF originales no se modifican.)\n\n" +
+    "Si la CURP del alumno está mal escrita en la BD, mejor déjalos y usa 'Buscar por nombre...' y luego 'Corregir CURP del alumno en la BD...'.");
+  if (ok) quitar(lista);
+};
 
 // ------------------------------------------------------------------ buscar alumno
 $("b-buscar-curp").onclick = async () => {
@@ -382,10 +540,10 @@ $("b-buscar-curp").onclick = async () => {
   if (!curpFormato(curp)) return aviso("CURP no válida", "La CURP debe tener 18 caracteres con el formato oficial.");
   try {
     const r = await api(`/alumnos/por-curp/${encodeURIComponent(curp)}`);
-    d.curp = curp; d.alumno = null; d.avisoBd = ""; d.porNombre = d.confirmado = false; d.destino = null;
+    d.curp = curp; d.alumno = null; d.avisoBd = ""; d.porNombre = d.confirmado = false; d.motivoNombre = null; d.destino = null;
     if (r.length === 1) d.alumno = r[0];
     else if (r.length > 1) d.avisoBd = `Hay ${r.length} alumnos con esa CURP: elige con 'Buscar por nombre'.`;
-    evaluar(d); refrescar(d);
+    d.yaCargados = []; evaluar(d); refrescar(d); revisarYaCargados(d);
   } catch (e) { aviso("Base de datos", e.message); }
 };
 $("curp").addEventListener("keydown", (e) => { if (e.key === "Enter") $("b-buscar-curp").click(); });
@@ -417,45 +575,107 @@ $("n-asociar").onclick = () => { if (nElegido) { $("dlg-nombre").close(); nAlCer
 $("b-buscar-nombre").onclick = () => {
   const d = sel; if (!d || OCUPADO.includes(d.estado)) return;
   buscarNombre(d.nombreOcr, (a) => { d.alumno = a; d.curp = (a.curp || "").toUpperCase(); d.avisoBd = "";
-    d.porNombre = false; d.confirmado = true; d.destino = null; evaluar(d); refrescar(d); });
+    d.porNombre = false; d.motivoNombre = null; d.confirmado = true; d.destino = null; d.yaCargados = [];
+    evaluar(d); refrescar(d); revisarYaCargados(d); });
+};
+
+// ------------------------------------------------------------------ corregir la CURP del alumno en la BD
+$("b-corregir-curp").onclick = async () => {
+  const d = sel; if (!d || !d.alumno || OCUPADO.includes(d.estado)) return;
+  const nueva = $("curp").value.trim().toUpperCase().replace(/\s/g, ""); $("curp").value = nueva;
+  const anterior = d.alumno.curp || "";
+  if (!curpFormato(nueva)) return aviso("Corregir CURP",
+    "Primero escribe, en el cuadro 'CURP', la CURP correcta del alumno (18 caracteres).\n\nDespués vuelve a pulsar este botón.");
+  if (!curpVerificada(nueva)) return aviso("Corregir CURP",
+    "Esta CURP no pasa la verificación (el dígito verificador no cuadra), así que probablemente tiene una letra o número mal leído.\n\n" +
+    "Corrígela en el cuadro 'CURP' hasta que diga 'dígito verificador OK'.");
+  if (nueva === anterior.trim().toUpperCase()) return aviso("Corregir CURP", "La CURP del alumno en la base de datos ya es esa.");
+  const ok = await si_no("Corregir CURP en la base de datos",
+    "Vas a CAMBIAR un dato del alumno en la base de datos:\n\n" +
+    `Alumno:   ${d.alumno.nombre_completo}  (Matrícula ${d.alumno.matricula})\n` +
+    `CURP actual en la BD:   ${anterior || "(vacía)"}\nCURP nueva:                   ${nueva}\n\n` +
+    `Nombre que dice el documento: ${d.nombreOcr || "(no se pudo leer)"}\n\n` +
+    "¿Confirmas que es la MISMA persona y que la CURP nueva es la correcta?\nEl cambio queda anotado.", true);
+  if (!ok) return;
+  try {
+    const alumno = await api(`/alumnos/${d.alumno.id}/curp`, {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({curp: nueva})});
+    docs.forEach(x => { if (x.alumno && x.alumno.id === alumno.id) { x.alumno = alumno; x.destino = null; } });   // mismo alumno en otros documentos
+    d.curp = nueva; d.avisoBd = ""; d.porNombre = false; d.motivoNombre = null; d.confirmado = true;
+    evaluar(d); refrescar(d);
+    aviso("Corregir CURP", `Listo: la CURP de ${alumno.nombre_completo} se corrigió en la base de datos.`);
+  } catch (e) { aviso("No se corrigió la CURP", e.message); }
 };
 
 // ------------------------------------------------------------------ guardar
-async function guardarArchivo(d, modo, reemplazarId) {
+// Regresa {ok, error, status}. En un duplicado con nombre, si el nombre no sirve el documento queda como estaba.
+async function guardarArchivo(d, modo, reemplazarId, nombre) {
+  const antes = {estado: d.estado, mensaje: d.mensaje};
   d.estado = GUARDANDO; refrescar(d);
   const datos = new FormData();
   datos.append("archivo", d.file); datos.append("id_alumno", d.alumno.id); datos.append("categoria", d.categoria);
   datos.append("modo", modo); if (reemplazarId != null) datos.append("reemplazar_id", reemplazarId);
+  if (nombre != null) datos.append("nombre", nombre);
   try {
     const r = await api("/guardar", {method: "POST", body: datos});
-    d.estado = GUARDADO; d.guardadoComo = r.guardado_como; d.mensaje = ""; refrescar(d); return true;
+    d.estado = GUARDADO; d.guardadoComo = r.guardado_como; d.mensaje = ""; refrescar(d); return {ok: true};
   } catch (e) {
-    d.estado = ERROR; d.mensaje = `No se guardó: ${e.message}`; refrescar(d); return false;
+    if (modo === "personalizado" && e.status === 422) { d.estado = antes.estado; d.mensaje = antes.mensaje; refrescar(d);
+      return {ok: false, error: e.message, status: 422}; }
+    d.estado = ERROR; d.mensaje = `No se guardó: ${e.message}`; refrescar(d); return {ok: false, error: e.message, status: e.status};
   }
 }
 
+// Duplicado con nombre: el id del alumno va fijo al inicio y la persona escribe el resto
+function duplicarConNombre(d, destino) {
+  return new Promise((resolver) => {
+    const prefijo = destino.prefijo, dlg = $("dlg-dupnombre");
+    $("dn-quien").textContent = `${d.alumno.nombre_completo}  -  ${d.categoria}`;
+    $("dn-prefijo").textContent = prefijo; $("dn-nombre").value = destino.sugerencia_duplicado;
+    $("dn-ejemplo").textContent = `Ejemplo: ${prefijo}DUPLICADO   o   ${prefijo}DUPLICADO 2`; $("dn-error").textContent = "";
+    dlg.oncancel = () => resolver(false);
+    $("dn-cancelar").onclick = () => { dlg.close(); resolver(false); };
+    $("dn-guardar").onclick = async () => {
+      let escrito = $("dn-nombre").value.trim();
+      if (escrito.toUpperCase().startsWith(prefijo.toUpperCase())) escrito = escrito.slice(prefijo.length);   // si pego el nombre completo
+      $("dn-guardar").disabled = true;
+      const r = await guardarArchivo(d, "personalizado", null, prefijo + escrito);
+      $("dn-guardar").disabled = false;
+      if (r.ok) { dlg.close(); resolver(true); }
+      else { $("dn-error").textContent = r.error; $("dn-nombre").focus(); }
+    };
+    dlg.showModal(); $("dn-nombre").focus(); $("dn-nombre").select();
+  });
+}
+
 $("b-guardar").onclick = async () => {
-  const d = sel; if (!d || !d.alumno || !tipos.some(t => t.categoria === d.categoria)) return;
-  if (d.estado === REVISAR && d.mensaje) {
-    const ok = await si_no("Confirmar", `${d.mensaje}\n\n¿Guardar de todas formas en el expediente de\n${d.alumno.nombre_completo}?`);
+  const d = sel; if (!d || !d.alumno || !tipoValido(d.categoria)) return;
+  if (d.estado === REVISAR && d.avisoConfirmar) {   // el aviso de "ya tiene este documento" se resuelve en su propia ventana
+    const ok = await si_no("Confirmar", `${d.avisoConfirmar}\n\n¿Guardar de todas formas en el expediente de\n${d.alumno.nombre_completo}?`);
     if (!ok) return;
   }
-  let existentes;
-  try { existentes = (await api(`/alumnos/${d.alumno.id}/destino?categoria=${encodeURIComponent(d.categoria)}`)).existentes; }
-  catch (e) { return aviso("Base de datos", e.message); }
+  let destino;
+  d.destino = null;   // siempre consultar lo que tiene el alumno justo antes de guardar (otra persona pudo guardar algo)
+  try { destino = await cargarDestino(d); } catch (e) { return aviso("Base de datos", e.message); }
+  const existentes = destino.existentes;
   let modo = "nuevo", reemplazarId = null;
   if (existentes.length) {
     const ult = existentes[existentes.length - 1];
-    const r = await confirmar("Ya existe",
-      `${d.alumno.nombre_completo} ya tiene registrado este tipo de documento:\n` +
-      existentes.map(a => `   ${a.archivo}  [${a.tipo_capturado}]  (${a.fecha})`).join("\n") +
-      `\n\nREEMPLAZAR = sustituye el más reciente (${ult.archivo}) por este\nADICIONAL = guarda este como otro documento`,
-      [{txt: "Reemplazar", valor: "reemplazar", clase: "principal"}, {txt: "Guardar como adicional", valor: "adicional"}, {txt: "Cancelar", valor: null}]);
+    const r = await confirmar("Este alumno ya tiene este documento",
+      `${d.alumno.nombre_completo}\nya tiene cargado: ${d.categoria}\n\n` +
+      existentes.map(a => `${a.archivo}   (guardado el ${a.fecha})`).join("\n") +
+      "\n\n¿Qué quieres hacer con el archivo nuevo?\n\n" +
+      "• Guardarlo también, con otro nombre: se conservan los dos. Tú escribes el nombre del nuevo.\n" +
+      `• Cambiar el anterior por este: el archivo anterior (${ult.archivo}) se sustituye por el nuevo.`,
+      [{txt: "Guardarlo también, con otro nombre", valor: "duplicar", clase: "bt-verde"},
+       {txt: "Cambiar el anterior por este", valor: "reemplazar", clase: "bt-durazno"},
+       {txt: "No guardarlo", valor: null}]);
     if (!r) return;
-    modo = r; if (r === "reemplazar") reemplazarId = ult.id;
+    if (r === "duplicar") { await duplicarConNombre(d, destino); return; }
+    modo = "reemplazar"; reemplazarId = ult.id;
   }
-  const ok = await guardarArchivo(d, modo, reemplazarId);
-  if (!ok) aviso("No se guardó", d.mensaje);
+  const r = await guardarArchivo(d, modo, reemplazarId);
+  if (!r.ok) aviso("No se guardó", d.mensaje);
 };
 
 $("b-todos").onclick = async () => {
@@ -464,12 +684,13 @@ $("b-todos").onclick = async () => {
     .sort((a, b) => a.alumno.id - b.alumno.id || ordenTipo(a.categoria) - ordenTipo(b.categoria));
   if (!pendientes.length) return aviso("Guardar", "No hay documentos en estado 'Listo'.");
   const ok = await si_no("Guardar", `¿Guardar ${pendientes.length} documento(s) en estado 'Listo'?\n\n` +
-    "Los que ya tengan ese tipo de documento registrado se dejan en 'Revisar' para que decidas uno por uno.");
+    "Si el alumno ya cuenta con ese documento, se deja en 'Revisar' (puedes quitarlos todos con 'Quitar los que ya están cargados').");
   if (!ok) return;
   for (const d of pendientes) {   // de uno en uno para no saturar la base
     try {
-      const ex = (await api(`/alumnos/${d.alumno.id}/destino?categoria=${encodeURIComponent(d.categoria)}`)).existentes;
-      if (ex.length) { d.estado = REVISAR; d.mensaje = `Ya tiene registrado '${ex[ex.length-1].tipo_capturado}' (${ex[ex.length-1].archivo}). Guárdalo individualmente para elegir reemplazar o adicional.`; refrescar(d); continue; }
+      d.destino = null;
+      const ex = (await cargarDestino(d)).existentes;
+      if (ex.length) { d.yaCargados = ex; evaluar(d); refrescar(d); continue; }
     } catch (e) { d.estado = ERROR; d.mensaje = e.message; refrescar(d); continue; }
     await guardarArchivo(d, "nuevo", null);
   }
@@ -510,7 +731,7 @@ async function eCargar(alumno) {
         eDoc = eDocs[tr.dataset.i]; $("e-eliminar").disabled = $("e-abrir").disabled = false; };
       tr.ondblclick = () => { tr.onclick(); eAbrir(); }; });
     const tiene = new Set(eDocs.map(x => x.tipo_reconocido).filter(Boolean));
-    const nombres = tipos.map(t => t.categoria);
+    const nombres = tipos.filter(t => !t.manual).map(t => t.categoria);   // "Duplicado" no se cuenta como faltante
     const si = nombres.filter(c => tiene.has(c)), no = nombres.filter(c => !tiene.has(c));
     const sinPdf = eDocs.filter(x => !x.pdf_existe).length;
     $("e-resumen").textContent = `${eDocs.length} documento(s).   Tiene: ${si.join(", ") || "ninguno"}.   No tiene: ${no.join(", ") || "nada"}.` +
@@ -539,6 +760,70 @@ $("e-abrir").onclick = eAbrir;
 $("e-cerrar").onclick = () => $("dlg-exp").close();
 $("b-consultar").onclick = () => abrirExpediente(null);
 $("b-ver-exp").onclick = () => { if (sel && sel.alumno) abrirExpediente(sel.alumno); };
+
+// ------------------------------------------------------------------ respaldos (base de datos y archivos)
+const tamano = (b) => b < 1024 ? `${b} bytes` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : b < 1073741824 ? `${(b / 1048576).toFixed(1)} MB` : `${(b / 1073741824).toFixed(1)} GB`;
+let rTimer = null;
+function pintarRespaldos(e) {
+  $("r-lista").innerHTML = e.respaldos.map(r => `<tr><td>${esc(r.nombre)}</td><td>${tamano(r.tamano)}</td><td>${esc(r.fecha)}</td>
+    <td><a href="/respaldo/descargar/${encodeURIComponent(r.nombre)}" download>Descargar</a></td></tr>`).join("") ||
+    `<tr><td colspan="4" class="suave">Todavía no hay respaldos.</td></tr>`;
+  $("r-bd").disabled = $("r-archivos").disabled = e.activo; $("r-cancelar").disabled = !e.activo;
+  const barra = $("r-barra");
+  if (e.activo) { $("r-estado").textContent = e.texto || "Trabajando..."; if (e.fraccion == null) barra.removeAttribute("value"); else { barra.max = 1; barra.value = e.fraccion; } }
+  else { barra.max = 1; barra.value = e.error ? 0 : (e.resultado ? 1 : 0);
+    if (e.error === "cancelado") $("r-estado").textContent = "Respaldo cancelado. No se guardó nada.";
+    else if (e.error) $("r-estado").textContent = `No se pudo completar el respaldo: ${e.error}`;
+    else if (e.resultado) { const r = e.resultado;
+      $("r-estado").textContent = `Listo: ${r.archivo} (${tamano(r.tamano)})` +
+        (r.tablas ? ". Contenido: " + r.tablas.map(t => `${t.tabla} ${t.filas}`).join(", ") : `. ${r.archivos} archivos` + (r.no_leidos ? `; ${r.no_leidos} no se pudieron leer` : "")); } }
+}
+async function vigilarRespaldo() {
+  clearTimeout(rTimer);
+  try { const e = await api("/respaldo/estado"); pintarRespaldos(e);
+    if (e.activo && $("dlg-resp").open) rTimer = setTimeout(vigilarRespaldo, 1000); } catch (e) { $("r-estado").textContent = e.message; }
+}
+async function iniciarRespaldo(ruta) {
+  try { pintarRespaldos(await api(ruta, {method: "POST"})); rTimer = setTimeout(vigilarRespaldo, 800); }
+  catch (e) { aviso("Respaldo", e.message); }
+}
+$("b-respaldos").onclick = () => { $("dlg-resp").showModal(); vigilarRespaldo(); };
+$("r-bd").onclick = () => iniciarRespaldo("/respaldo/bd");
+$("r-archivos").onclick = async () => {
+  if (await si_no("Respaldar los archivos", "Se copiarán TODOS los PDF de los expedientes en un solo archivo.\n\n" +
+    "Puede tardar mucho y usar bastante espacio en el servidor. Puedes cerrar esta ventana: el respaldo sigue en el servidor.\n\n¿Empezar?")) iniciarRespaldo("/respaldo/archivos");
+};
+$("r-cancelar").onclick = async () => { if (await si_no("Cancelar", "¿Cancelar el respaldo en curso?\nEl respaldo incompleto se borra.")) {
+  try { pintarRespaldos(await api("/respaldo/cancelar", {method: "POST"})); vigilarRespaldo(); } catch (e) { aviso("Respaldo", e.message); } } };
+$("r-cerrar").onclick = () => { clearTimeout(rTimer); $("dlg-resp").close(); };
+
+// ------------------------------------------------------------------ acceso con contrasena (solo si el servidor la tiene)
+let loginAbierto = false;
+function pedirLogin() {
+  if (loginAbierto) return Promise.resolve();
+  loginAbierto = true;
+  return new Promise((resolver) => {
+    const dlg = $("dlg-login"); $("l-clave").value = ""; $("l-error").textContent = "";
+    dlg.oncancel = (e) => e.preventDefault();   // no se puede cerrar sin entrar
+    const entrar = async () => {
+      try { const r = await api("/api/login", {method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({usuario: $("l-usuario").value, clave: $("l-clave").value})});
+        dlg.close(); loginAbierto = false; mostrarUsuario(r.usuario);
+        if (!tipos.length) await cargarTipos();   // si la lista de tipos no pudo cargarse antes de entrar
+        resolver(); verificarSalud();
+      } catch (e) { $("l-error").textContent = e.message; $("l-clave").select(); }
+    };
+    $("l-entrar").onclick = entrar;
+    $("l-clave").onkeydown = (e) => { if (e.key === "Enter") entrar(); };
+    $("l-usuario").onkeydown = (e) => { if (e.key === "Enter") $("l-clave").focus(); };
+    dlg.showModal(); $("l-usuario").focus();
+  });
+}
+function mostrarUsuario(usuario) {
+  $("usuario-sesion").hidden = $("b-salir").hidden = !usuario;
+  if (usuario) $("usuario-sesion").textContent = `Sesión: ${usuario}`;
+}
+$("b-salir").onclick = async () => { try { await api("/api/logout", {method: "POST"}); } catch {} location.reload(); };
 
 // ------------------------------------------------------------------ cargar archivos (botones y arrastrar)
 $("b-pdfs").onclick = () => $("in-pdfs").click();
@@ -578,21 +863,30 @@ window.addEventListener("drop", async (e) => {
 async function verificarSalud() {
   try {
     const s = await api("/salud");
-    hayBD = s.base_datos === "conectada";
+    hayBD = s.base_datos === "conectada"; hayRespaldos = !!s.respaldos;
     $("conexion").textContent = !s.modelo_cargado ? "Cargando modelo..." :
       hayBD ? `Conectado a ${s.base_nombre}: ${s.alumnos} alumnos, ${s.archivos} archivos` :
       s.base_datos === "error" ? "Sin conexión a la base de datos" : "Sin base de datos: solo clasificación";
     $("conexion").style.color = (s.base_datos === "error") ? "var(--mal)" : "";
     ["b-todos", "b-consultar"].forEach(i => $(i).disabled = !hayBD);
+    $("b-respaldos").hidden = !hayRespaldos;
     if (!s.modelo_cargado) setTimeout(verificarSalud, 3000);
   } catch { $("conexion").textContent = "Servicio no disponible"; $("conexion").style.color = "var(--mal)"; }
   pintarDetalle();
 }
 
-(async function iniciar() {
-  try { tipos = await api("/tipos"); } catch {}
+async function cargarTipos() {
+  try { tipos = await api("/tipos"); } catch { return; }
   $("d-tipo").innerHTML = tipos.map(t => `<option>${esc(t.categoria)}</option>`).join("");
   $("d-tipo").selectedIndex = -1;
+}
+
+(async function iniciar() {
+  try {   // contrasena: si el servidor la pide y no hay sesion, se pide antes de cargar nada
+    const ses = await api("/api/sesion");
+    if (ses.requiere_clave && !ses.usuario) await pedirLogin(); else mostrarUsuario(ses.usuario);
+  } catch {}
+  await cargarTipos();
   await verificarSalud(); pintarLista(); pintarDetalle();
 })();
 </script>
