@@ -306,7 +306,9 @@ def sesion(request: Request):
 # ---------------------------------------------------------------- endpoints
 @app.get("/", include_in_schema=False)
 def inicio():
-    return FileResponse(BASE / "app" / "static" / "index.html")
+    # "no-cache": el navegador revisa en cada visita si hay una version nueva de la pagina
+    # (si no, Brave/Chrome pueden quedarse mostrando una version vieja despues de actualizar el sistema)
+    return FileResponse(BASE / "app" / "static" / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/salud", response_model=Salud, summary="Estado del servicio")
