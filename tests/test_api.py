@@ -110,33 +110,3 @@ def test_alumno_por_nombre_pide_revision_si_hay_duda():
     # el documento si traia CURP pero no estaba en la BD
     assert "no esta en la BD" in reglas.motivo_nombre_dudoso(
         _alumno(), "GOTD070116MCHNRSA9", "DEISY ADILENE GONZALEZ TORRES", None)
-
-
-def test_contrasena_de_acceso(cliente, monkeypatch):
-    monkeypatch.setattr(main, "APP_CLAVE", "Secreta-2026")
-    assert cliente.get("/salud").json()["requiere_clave"] is True     # publica: la pagina necesita saberlo
-    assert cliente.get("/").status_code == 200
-    sin = cliente.get("/api/sesion").json()                            # publica: la pagina pregunta si ya hay sesion
-    assert sin == {"usuario": None, "requiere_clave": True}
-    assert cliente.get("/tipos").status_code == 401                    # protegido
-    assert cliente.post("/respaldo/bd").status_code == 401
-    assert cliente.post("/api/login", json={"usuario": "Nancy", "clave": "mal"}).status_code == 401
-    assert cliente.get("/tipos").status_code == 401
-    r = cliente.post("/api/login", json={"usuario": "Nancy", "clave": "Secreta-2026"})
-    assert r.status_code == 200 and r.json()["usuario"] == "Nancy"
-    assert cliente.get("/tipos").status_code == 200                    # con la cookie de sesion
-    assert cliente.get("/api/sesion").json()["usuario"] == "Nancy"
-    cliente.post("/api/logout")
-    assert cliente.get("/tipos").status_code == 401
-    cliente.cookies.clear()
-
-
-def test_contrasena_con_hash_del_escritorio(cliente, monkeypatch):
-    import hashlib
-    sal = bytes.fromhex("fa906f56ad53ee49e0b245d2ba8504cd")
-    h = hashlib.pbkdf2_hmac("sha256", "MiClave".encode(), sal, 200000).hex()
-    monkeypatch.setattr(main, "APP_CLAVE", f"pbkdf2_sha256${200000}${sal.hex()}${h}")
-    assert cliente.post("/api/login", json={"usuario": "X", "clave": "otra"}).status_code == 401
-    assert cliente.post("/api/login", json={"usuario": "X", "clave": "MiClave"}).status_code == 200
-    cliente.post("/api/logout")
-    cliente.cookies.clear()

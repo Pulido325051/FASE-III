@@ -3,7 +3,7 @@
 La Fase II dejó funcionando la versión web del *Sistema de Expedientes* con una base de datos de prueba. La Fase III **no
 cambia el modelo ni el flujo base**: agrega las mejoras que salieron de usar el sistema de escritorio con la base real
 (documentos duplicados, CURP mal escritas en la BD, listas largas que hay que limpiar a mano) y las que la Fase II dejó
-pendientes (contraseña de acceso, respaldos).
+pendientes (contraseña de acceso y permisos distintos, respaldos).
 
 > **¿Dónde quedó la Fase II?** Este repositorio empezó como *FASE-II* y se renombró a *FASE-III*: conserva **todo el historial**.
 > La entrega de la Fase II está marcada con la etiqueta **`fase-2`** (`git checkout fase-2`, o en GitHub: *Releases / Tags → fase-2*).
@@ -20,7 +20,7 @@ pendientes (contraseña de acceso, respaldos).
 | 5 | **Alumno por nombre sin CURP** deja de pedir revisión si el nombre coincide y la fecha concuerda | Muchas actas no traen CURP legible pero sí el nombre |
 | 6 | **Corregir la CURP del alumno en la BD** | Hay CURP mal escritas en la base y por eso no se encontraba al alumno |
 | 7 | **Respaldos** de la base de datos (.sql) y de los PDF (.zip) desde la pantalla | Respaldos manuales, con descarga |
-| 8 | **Contraseña de acceso** opcional (`APP_CLAVE`) | Era el pendiente principal de la Fase II; protege también los respaldos y la corrección de CURP |
+| 8 | **Login con 3 roles**: administrador, operador y consultor | Cumple el pendiente «usuarios y permisos distintos»: el consultor solo consulta, el operador no respalda y el administrador lo hace todo |
 | 9 | Botones con **tonos suaves de color** y leyenda de colores | Identificar más rápido para qué sirve cada botón |
 
 ## Detalle
@@ -69,33 +69,60 @@ se pueden cancelar y se descargan desde la misma pantalla. Se guardan en `expedi
 
 ![Respaldos](capturas/11_respaldos.png)
 
-### 8. Contraseña de acceso
-Con `APP_CLAVE` definida, la página pide nombre y contraseña; todas las rutas (salvo la página, `/salud` y el inicio de sesión) exigen sesión. Admite la contraseña
-tal cual o el hash `pbkdf2_sha256$...` del programa de escritorio. Cinco intentos fallidos bloquean la IP cinco minutos. El nombre que se escribe queda
-registrado en las bitácoras y en la descripción de los archivos guardados.
+### 8. Login con tres roles
+La página pide **elegir un usuario y escribir su contraseña**. Hay tres usuarios fijos:
 
-![Pantalla de entrada](capturas/12_contrasena.png)
+| Usuario | Puede | No puede |
+|---|---|---|
+| **Administrador** | Todo, **incluidos los respaldos** | — |
+| **Operador** | Subir y leer documentos, guardar (reemplazar o duplicado), limpiar la lista, corregir CURP, **eliminar documentos** y consultar | Respaldos |
+| **Consultor** | **Consultar** expedientes y abrir sus PDF | Agregar, guardar, eliminar, corregir CURP y respaldos |
+
+![Pantalla de entrada](capturas/12_login_roles.png)
+
+Lo que ve cada rol cambia: el **Operador** no tiene el botón *Respaldos…*; el **Consultor** entra directo a *Consultar expediente* y solo ve el panel de consulta.
+
+![Pantalla del Consultor](capturas/13_rol_consultor.png)
+![Pantalla del Operador](capturas/14_rol_operador.png)
+
+**Los permisos se aplican en el servidor, no solo en la pantalla.** Cada ruta exige un permiso (`consultar`, `capturar` o `respaldar`); sin sesión responde `401` y con un rol
+que no alcanza, `403`. Evidencia real:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/tipos                      # sin sesión
+401
+curl -c cookies -H "Content-Type: application/json" -d '{"usuario":"consultor","clave":"consultor-2026"}' http://localhost:8000/api/login
+{"usuario":"Consultor","rol":"consultor","permisos":["consultar"]}
+curl -b cookies -X POST http://localhost:8000/respaldo/bd                               # el consultor intenta respaldar
+{"detail":"Tu rol (Consultor) no tiene permiso para esto."}                              # 403
+curl -b cookies "http://localhost:8000/alumnos?q=EJEMPLO"                               # pero sí puede consultar
+200
+```
+
+Las contraseñas vienen de variables de entorno (`CLAVE_ADMINISTRADOR`, `CLAVE_OPERADOR`, `CLAVE_CONSULTOR`; texto o el hash `pbkdf2_sha256$...` del programa de escritorio).
+`docker-compose.yml` trae contraseñas **de demostración** (están en el README) y deben cambiarse con datos reales. Cinco intentos fallidos bloquean la IP cinco minutos, y el nombre del usuario
+queda en las bitácoras y en la descripción de cada archivo guardado.
 
 ## Cómo se comprobó
 
-- **28 pruebas automáticas** (`docker compose run --rm api pytest -v`): las 17 de la Fase II más 11 nuevas (duplicados con nombre, categoría Duplicado, corregir CURP,
-  respaldos, contraseña, reglas de alumno por nombre).
+- **38 pruebas automáticas** (`docker compose run --rm api pytest -v`): las 17 de la Fase II más 21 nuevas (duplicados con nombre, categoría Duplicado, corregir CURP,
+  respaldos, reglas de alumno por nombre y **roles**: matriz completa de permisos por rol con `401`/`403`, con y sin base de datos).
 - **Prueba en navegador real** (Microsoft Edge): subir los PDF de ejemplo, ya cargado → turquesa, duplicado con nombre y errores de nombre, categoría Duplicado,
-  los dos botones de limpiar, corregir CURP (y restaurarla), respaldo de la BD con descarga, y entrar/salir con contraseña. Se encontró y corrigió un error
+  los dos botones de limpiar, corregir CURP (y restaurarla), respaldo de la BD con descarga, y **entrar con los tres roles** (qué botones ve cada uno y que el servidor rechaza con `403` lo que no le toca). Se encontró y corrigió un error
   (con contraseña, la lista de tipos no cargaba tras entrar).
 
 ## Archivos que cambiaron
 
 | Archivo | Cambio |
 |---|---|
-| `app/main.py` | Tipo Duplicado, modo `personalizado`, `/alumnos/{id}/curp`, respaldos, contraseña, versión 3.0.0 |
+| `app/main.py` | Tipo Duplicado, modo `personalizado`, `/alumnos/{id}/curp`, respaldos, usuarios y roles, versión 3.0.0 |
 | `app/almacenamiento.py`, `app/base_datos.py` | Nombre con prefijo, validación, `actualizar_curp`, usuario en bitácoras (mismo código que el programa de escritorio) |
 | `app/respaldos.py` *(nuevo)* | Respaldo de la BD y de los archivos |
 | `app/reglas.py` *(nuevo)* | Reglas de «alumno por nombre» |
 | `app/static/index.html` | Pantalla: colores, ventanas nuevas, botones de limpiar, respaldos y entrada |
-| `docker-compose.yml`, `.env.example` | `RESPALDOS_DIR`, `APP_CLAVE`, imagen `fase3` |
-| `tests/` | 11 pruebas nuevas |
+| `docker-compose.yml`, `.env.example` | `RESPALDOS_DIR`, `CLAVE_*` (usuarios de la demo), imagen `fase3` |
+| `tests/` | 21 pruebas nuevas (`test_roles.py` y `conftest.py` son nuevos) |
 
 ## Lo que sigue pendiente
 
-Conectarlo a la base de datos **real** (hoy solo usa la de prueba), HTTPS, usuarios con permisos distintos, respaldos programados y publicarlo en un servidor.
+Conectarlo a la base de datos **real** (hoy solo usa la de prueba), HTTPS, administrar usuarios desde la pantalla (hoy son tres fijos), respaldos programados y publicarlo en un servidor.

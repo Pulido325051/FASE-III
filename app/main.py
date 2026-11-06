@@ -11,7 +11,7 @@ Expone el mismo modelo y motor de OCR del Sistema de Expedientes:
     POST /alumnos/{id}/curp         -> corregir la CURP de un alumno en la BD (queda en una bitacora)
     POST /respaldo/bd | /respaldo/archivos, GET /respaldo/estado | /respaldo/descargar/{nombre}
                                     -> respaldos de la base de datos (.sql) y de los PDF (.zip)
-    POST /api/login, /api/logout    -> contrasena de acceso (solo si se define APP_CLAVE)
+    POST /api/login, /api/logout    -> entrar con uno de los 3 usuarios (administrador, operador, consultor)
     GET  /alumnos/{id}/expediente/{doc}/pdf  -> abrir un PDF del expediente
     DELETE /alumnos/{id}/expediente/{doc}    -> eliminar un documento (el PDF va a 'eliminados')
     GET  /tipos                     -> tipos de documento que maneja el sistema
@@ -73,8 +73,19 @@ MANUALES = {"Duplicado"}   # tipos que no son clases del modelo
 ORDEN = ["CURP", "Certificados Secundaria", "Actas de nacimiento",
          "Certificado Final", "Certificado Parcial", "Equivalencia", "Duplicado"]
 
-# Contrasena de acceso (opcional): sin APP_CLAVE la web queda abierta (demo con datos ficticios)
-APP_CLAVE = os.getenv("APP_CLAVE", "")
+# Usuarios fijos por rol (opcional). Cada contrasena viene de una variable de entorno (texto o hash pbkdf2_sha256$...);
+# sin ninguna definida la web queda abierta (demo con datos ficticios).
+#   administrador: todo, incluidos los respaldos | operador: todo menos respaldos | consultor: solo consultar y ver
+ROLES = {
+    "administrador": {"nombre": "Administrador", "permisos": {"consultar", "capturar", "respaldar"},
+                      "descripcion": "Acceso a todo, incluidos los respaldos"},
+    "operador": {"nombre": "Operador", "permisos": {"consultar", "capturar"},
+                 "descripcion": "Todo, menos los respaldos"},
+    "consultor": {"nombre": "Consultor", "permisos": {"consultar"},
+                  "descripcion": "Solo consultar expedientes y ver archivos"},
+}
+CLAVES = {rol: os.getenv(f"CLAVE_{rol.upper()}", "") for rol in ROLES}
+CLAVES = {rol: clave for rol, clave in CLAVES.items() if clave}
 HORAS_SESION = float(os.getenv("HORAS_SESION", "10"))
 # Respaldos: solo si se indica la carpeta donde se guardan (docker-compose la define)
 RESPALDOS_DIR = os.getenv("RESPALDOS_DIR", "")
@@ -98,7 +109,7 @@ log = logging.getLogger("api")
 
 estado = {"motor": None, "bd": None, "inicio": time.time(), "procesados": 0}
 limite = threading.BoundedSemaphore(MAX_CONCURRENCIA)
-sesiones = {}              # token -> {"usuario": str, "expira": float}
+sesiones = {}              # token -> {"rol": str, "expira": float}
 intentos_fallidos = {}     # ip -> [momentos de intentos de entrada fallidos]
 # Un solo respaldo a la vez (el de archivos puede tardar mucho)
 trabajo = {"activo": False, "tipo": None, "texto": "", "fraccion": None, "resultado": None, "error": None,
@@ -229,39 +240,64 @@ def _bd():
     return estado["bd"]
 
 
-# ---------------------------------------------------------------- contrasena de acceso (opcional)
+# ---------------------------------------------------------------- usuarios y roles (opcional)
+# Hay tres usuarios fijos, uno por rol. Si ninguna contrasena esta definida, la web queda abierta (demo sin login).
 RUTAS_PUBLICAS = ("/", "/salud", "/api/login", "/api/logout", "/api/sesion", "/favicon.ico")
 
 
-def clave_correcta(clave):
-    """APP_CLAVE puede ser la contrasena tal cual o el MISMO hash que usa el sistema de escritorio
-    en su config.ini ([acceso] clave = pbkdf2_sha256$...)."""
-    if APP_CLAVE.startswith("pbkdf2_sha256$"):
+def clave_correcta(clave, esperada):
+    """La contrasena esperada puede ser el texto tal cual o el MISMO hash que usa el sistema de
+    escritorio en su config.ini ([acceso] clave = pbkdf2_sha256$...)."""
+    if esperada.startswith("pbkdf2_sha256$"):
         try:
-            _, iteraciones, sal, esperado = APP_CLAVE.split("$")
+            _, iteraciones, sal, hash_esperado = esperada.split("$")
             h = hashlib.pbkdf2_hmac("sha256", clave.encode("utf-8"), bytes.fromhex(sal), int(iteraciones))
-            return hmac.compare_digest(h.hex(), esperado)
+            return hmac.compare_digest(h.hex(), hash_esperado)
         except ValueError:
             return False
-    return hmac.compare_digest(clave.encode("utf-8"), APP_CLAVE.encode("utf-8"))
+    return hmac.compare_digest(clave.encode("utf-8"), esperada.encode("utf-8"))
 
 
-def _usuario(request: Request):
-    """Quien inicio sesion (None si la web no tiene contrasena o la sesion no es valida)."""
+def nivel_requerido(metodo, ruta):
+    """Que permiso exige cada ruta: consultar (ver), capturar (subir/guardar/eliminar/corregir) o respaldar."""
+    if ruta.startswith("/respaldo"):
+        return "respaldar"
+    if metodo not in ("GET", "HEAD") or ruta.endswith("/destino"):
+        return "capturar"
+    return "consultar"
+
+
+def _sesion(request: Request):
+    """Sesion valida de quien hace la peticion ({"rol", "expira"}) o None."""
     token = request.cookies.get("sesion", "")
     s = sesiones.get(token)
     if not s or s["expira"] < time.time():
         sesiones.pop(token, None)
         return None
-    return s["usuario"]
+    return s
+
+
+def _usuario(request: Request):
+    """Nombre de quien inicio sesion (para las bitacoras); None si la web no tiene login."""
+    s = _sesion(request)
+    return ROLES[s["rol"]]["nombre"] if s else None
+
+
+def _info_sesion(rol):
+    return {"usuario": ROLES[rol]["nombre"], "rol": rol, "permisos": sorted(ROLES[rol]["permisos"])}
 
 
 @app.middleware("http")
 async def exigir_sesion(request: Request, call_next):
-    if APP_CLAVE and request.method != "OPTIONS":
+    if CLAVES and request.method != "OPTIONS":
         ruta = request.url.path
-        if ruta not in RUTAS_PUBLICAS and not ruta.startswith("/static/") and _usuario(request) is None:
-            return JSONResponse({"detail": "Inicia sesion para continuar."}, status_code=401)
+        if ruta not in RUTAS_PUBLICAS and not ruta.startswith("/static/"):
+            s = _sesion(request)
+            if s is None:
+                return JSONResponse({"detail": "Inicia sesion para continuar."}, status_code=401)
+            if nivel_requerido(request.method, ruta) not in ROLES[s["rol"]]["permisos"]:
+                return JSONResponse({"detail": f"Tu rol ({ROLES[s['rol']]['nombre']}) no tiene permiso para esto."},
+                                    status_code=403)
     return await call_next(request)
 
 
@@ -272,23 +308,23 @@ class Login(BaseModel):
 
 @app.post("/api/login", include_in_schema=False)
 def login(datos: Login, request: Request, response: Response):
-    if not APP_CLAVE:
+    if not CLAVES:
         return {"usuario": None}
     ip = request.client.host if request.client else "?"
     recientes = [t for t in intentos_fallidos.get(ip, []) if t > time.time() - 300]
     if len(recientes) >= 5:
         raise HTTPException(429, "Demasiados intentos. Espera 5 minutos.")
-    usuario = re.sub(r"[^\w .\-]", "", datos.usuario).strip()[:30]
-    if not usuario or not clave_correcta(datos.clave):
+    rol = datos.usuario.strip().lower()
+    if rol not in CLAVES or not clave_correcta(datos.clave, CLAVES[rol]):
         intentos_fallidos[ip] = recientes + [time.time()]
         log.warning("Acceso denegado desde %s", ip)
-        raise HTTPException(401, "Nombre o contrasena incorrectos.")
+        raise HTTPException(401, "Usuario o contrasena incorrectos.")
     intentos_fallidos.pop(ip, None)
     token = secrets.token_urlsafe(32)
-    sesiones[token] = {"usuario": usuario, "expira": time.time() + HORAS_SESION * 3600}
+    sesiones[token] = {"rol": rol, "expira": time.time() + HORAS_SESION * 3600}
     response.set_cookie("sesion", token, httponly=True, samesite="strict", max_age=int(HORAS_SESION * 3600))
-    log.info("Entro %s desde %s", usuario, ip)
-    return {"usuario": usuario}
+    log.info("Entro %s (%s) desde %s", ROLES[rol]["nombre"], rol, ip)
+    return _info_sesion(rol)
 
 
 @app.post("/api/logout", include_in_schema=False)
@@ -300,7 +336,15 @@ def logout(request: Request, response: Response):
 
 @app.get("/api/sesion", include_in_schema=False)
 def sesion(request: Request):
-    return {"usuario": _usuario(request), "requiere_clave": bool(APP_CLAVE)}
+    """Publica: la pagina pregunta aqui si hay que iniciar sesion, con que usuarios y que puede hacer quien entro."""
+    usuarios = [{"usuario": rol, "nombre": ROLES[rol]["nombre"], "descripcion": ROLES[rol]["descripcion"]}
+                for rol in ROLES if rol in CLAVES]
+    if not CLAVES:   # sin login: todo permitido
+        return {"requiere_clave": False, "usuarios": [], "usuario": None, "rol": None,
+                "permisos": ["consultar", "capturar", "respaldar"]}
+    s = _sesion(request)
+    info = _info_sesion(s["rol"]) if s else {"usuario": None, "rol": None, "permisos": []}
+    return {"requiere_clave": True, "usuarios": usuarios, **info}
 
 
 # ---------------------------------------------------------------- endpoints
@@ -331,7 +375,7 @@ def salud():
         categorias=motor.categorias if motor else [],
         documentos_procesados=estado["procesados"],
         segundos_activo=int(time.time() - estado["inicio"]),
-        requiere_clave=bool(APP_CLAVE),
+        requiere_clave=bool(CLAVES),
         respaldos=bool(RESPALDOS_DIR) and bd is not None,
     )
 

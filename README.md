@@ -29,14 +29,14 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 | ✅ Ya está en la Fase III | ⏳ Falta para usarlo con datos reales |
 |---|---|
 | Modelo de IA que clasifica 6 tipos de documento (~97 % de exactitud), entrenado con ~4,200 documentos | Conectarlo a la base de datos **real** de Control Escolar (hoy usa la de prueba) |
-| Lectura de CURP, nombre y fecha con OCR | HTTPS (certificado) y usuarios con permisos distintos |
+| Lectura de CURP, nombre y fecha con OCR | HTTPS (certificado) y administrar usuarios desde la pantalla |
 | Pantalla web igual a la app de escritorio (lotes, colores, revisión) y botones con tonos suaves | Respaldos automáticos programados (hoy se hacen a mano desde la pantalla) |
 | **Nuevo:** aviso de «ya tiene este documento» al leer el PDF (fila turquesa) y botones para **limpiar la lista** de golpe | Publicarlo en un servidor de la escuela o en la nube |
 | **Nuevo:** duplicados con nombre (el id del alumno va fijo) y categoría **«Duplicado»** que se elige a mano | |
 | **Nuevo:** alumno encontrado por nombre sin CURP no pide revisión; **corregir la CURP** del alumno en la BD (con bitácora) | |
-| **Nuevo:** **respaldos** de la base de datos (.sql) y de los PDF (.zip) desde la pantalla; **contraseña de acceso** opcional | |
+| **Nuevo:** **respaldos** de la base de datos (.sql) y de los PDF (.zip) desde la pantalla; **login con 3 roles** (administrador, operador y consultor) con permisos distintos | |
 | Guardar, reemplazar, consultar y eliminar con papelera; todo en Docker con un solo comando | |
-| 28 pruebas automáticas y esta guía | |
+| 38 pruebas automáticas y esta guía | |
 
 ### ⚡ Resumen para quien ya sabe Docker
 
@@ -44,7 +44,7 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 git clone https://github.com/Pulido325051/FASE-III.git && cd FASE-III
 docker compose up --build        # primera vez: 5–15 min
 # abrir http://localhost:8000
-docker compose run --rm api pytest -v     # debe terminar con "28 passed"
+docker compose run --rm api pytest -v     # debe terminar con "38 passed"
 ```
 
 No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defecto.
@@ -257,8 +257,24 @@ Abre tu navegador (Chrome, Edge, Firefox…) y entra a:
 
 ### 👉 http://localhost:8000
 
-Verás la pantalla **"Expedientes - Control Escolar"**. Arriba a la derecha debe decir
+Primero **elige un usuario y escribe su contraseña** (ver la tabla de abajo; para la demo, *Administrador* / `admin-2026`). Verás la pantalla **"Expedientes - Control Escolar"**. Arriba a la derecha debe decir
 **"Conectado a controlescolar_prueba: 100 alumnos, … archivos"**. Si dice *Cargando modelo…*, espera unos segundos.
+
+### Entrar al sistema: los tres usuarios
+
+La primera pantalla pide **elegir un usuario y escribir su contraseña**. Los de la demostración (datos ficticios) son:
+
+| Usuario | Contraseña de la demo | Qué puede hacer |
+|---|---|---|
+| **Administrador** | `admin-2026` | Todo, **incluidos los respaldos** |
+| **Operador** | `operador-2026` | Todo (subir, guardar, duplicados, limpiar la lista, corregir CURP, eliminar documentos y consultar), **menos los respaldos** |
+| **Consultor** | `consultor-2026` | **Solo consultar**: buscar alumnos, ver sus expedientes y abrir sus PDF. No agrega, guarda, elimina ni respalda |
+
+![Pantalla de entrada](capturas/12_login_roles.png)
+
+Los permisos los **exige el servidor** (responde `403` si el rol no alcanza), no solo se ocultan botones. Estas contraseñas son de **demostración**: cámbialas
+en el archivo `.env` (`CLAVE_ADMINISTRADOR`, `CLAVE_OPERADOR`, `CLAVE_CONSULTOR`) antes de usar el sistema con datos reales o publicarlo.
+Cada cambio guardado o eliminado queda registrado con el nombre del usuario que lo hizo.
 
 ### Cómo se ve y qué hace cada parte
 
@@ -317,7 +333,7 @@ En la carpeta `ejemplos` hay dos documentos **inventados** de la alumna ficticia
   **Corregir CURP del alumno en la BD…**: muestra la CURP actual y la nueva y pide confirmación. Queda anotado en `expedientes/registro_cambios_curp.csv`.
 - **Respaldos:** pulsa **Respaldos…** → **Respaldar la base de datos**. Aparece en la lista y se puede **descargar**; los archivos quedan en
   `expedientes/respaldos` (visibles en tu PC).
-- **Contraseña (opcional):** pon `APP_CLAVE=tu-contraseña` en el `.env` y vuelve a encender (`docker compose up -d`): la página pedirá nombre y contraseña.
+- **Roles:** entra con cada usuario de la demostración (tabla de arriba) y compara. El **Operador** no ve *Respaldos…*; el **Consultor** solo ve *Modo consulta* (buscar alumnos y abrir sus PDF). Aunque alguien intente llamar a la API directamente, el servidor responde **403** si el rol no alcanza.
 - **Corregir datos:** selecciona un documento, cambia el **Tipo de documento** o escribe otra **CURP** y pulsa
   **Buscar alumno por CURP**. Si el documento no tiene CURP legible, usa **Buscar por nombre…** y elige al alumno.
 - **Eliminar sin perder:** en *Consultar expediente…*, elige un documento y pulsa **Eliminar documento…**. Se quita del
@@ -409,7 +425,7 @@ luego reinicia con los dos comandos de arriba.
 
 ## 9. Comprobar que todo funciona (pruebas automáticas)
 
-El proyecto trae **28 pruebas automáticas** que revisan todo el sistema por ti.
+El proyecto trae **38 pruebas automáticas** que revisan todo el sistema por ti.
 
 En **Símbolo del sistema**, dentro de `C:\FASE-III`, escribe:
 
@@ -420,7 +436,7 @@ docker compose run --rm api pytest -v
 Espera menos de un minuto. Al final debe decir:
 
 ```
-28 passed
+38 passed
 ```
 
 Qué revisan las pruebas:
@@ -480,7 +496,7 @@ Las pruebas dejan la base de datos como estaba.
 | `db/` | La base de datos de prueba: estructura de las tablas y 100 alumnos **inventados** (ver sección 8) |
 | `expedientes/` | **Aquí se guardan los PDFs de los alumnos** al pulsar *Guardar en expediente* (ver sección 7). Su contenido no se sube a GitHub |
 | `ejemplos/` | Dos documentos PDF **inventados** para probar |
-| `tests/` | Las 28 pruebas automáticas |
+| `tests/` | Las 38 pruebas automáticas |
 | `herramientas/` | `anonimizar_vectorizador.py`: quita datos personales del modelo antes de publicarlo (ver abajo) |
 | `docs/` | Documentación: evidencia de integración, manual de despliegue en la nube (Markdown y Word), capturas en `docs/capturas/` y detalle técnico |
 | `Dockerfile` | Las instrucciones para armar el contenedor del programa |
@@ -511,7 +527,7 @@ python herramientas/anonimizar_vectorizador.py vectorizador.pkl modelo/vectoriza
 | Reemplazar / duplicado con nombre / eliminar (con papelera) | Sí | Sí |
 | Categoría «Duplicado», «ya tiene ese documento», limpiar la lista, corregir CURP | Sí | Sí |
 | Respaldos (base de datos y archivos) | Sí (botón «Respaldos…») | Sí (se guardan en el servidor y se descargan) |
-| Contraseña de acceso | Sí | Sí, **opcional** (`APP_CLAVE` en el `.env`; obligatoria con datos reales) |
+| Usuarios y permisos | Una contraseña para todos | **3 roles**: administrador (todo), operador (todo menos respaldos) y consultor (solo consultar) |
 | Otros programas pueden usarlo (API) | No | Sí (`/docs`) |
 
 ---

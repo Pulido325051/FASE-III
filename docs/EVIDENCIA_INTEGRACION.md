@@ -34,7 +34,7 @@ La documentación interactiva de la API se genera sola y está disponible en `/d
 | POST | `/alumnos/{id}/curp` | **Fase III.** Corrige la CURP de un alumno en la BD (con bitácora) |
 | POST | `/respaldo/bd`, `/respaldo/archivos` | **Fase III.** Respaldo de la base de datos (.sql) o de los PDF (.zip) |
 | GET | `/respaldo/estado`, `/respaldo/descargar/{nombre}` | **Fase III.** Avance del respaldo y descarga |
-| POST | `/api/login`, `/api/logout` | **Fase III.** Contraseña de acceso (solo si se define `APP_CLAVE`) |
+| POST | `/api/login`, `/api/logout` | **Fase III.** Entrar con administrador, operador o consultor (cada uno con permisos distintos; `403` si no alcanza) |
 | GET | `/alumnos/{id}/expediente` | Documentos del alumno |
 | GET | `/alumnos/{id}/expediente/{doc}/pdf` | Abre el PDF de un documento |
 | DELETE | `/alumnos/{id}/expediente/{doc}` | Elimina el documento (el PDF se conserva en `archivos_eliminados`) |
