@@ -41,7 +41,7 @@ La base de datos es **opcional**: sin las variables `DB_*` la API solo clasifica
 | `/alumnos/{id}/curp` | POST | **Fase III.** Corrige la CURP del alumno en la BD: exige formato y dígito verificador válidos y que nadie más la tenga; queda en `registro_cambios_curp.csv` |
 | `/respaldo/bd`, `/respaldo/archivos` | POST | **Fase III.** Respaldo en segundo plano de la base de datos (.sql, una lectura consistente) o de los PDF (.zip). Un solo respaldo a la vez |
 | `/respaldo/estado`, `/respaldo/cancelar`, `/respaldo/descargar/{nombre}` | GET / POST | **Fase III.** Avance, cancelación y descarga (solo archivos `BD_*` y `Archivos_*` hechos por el sistema) |
-| `/api/login`, `/api/logout`, `/api/sesion` | POST / GET | **Fase III.** Contraseña de acceso con sesión por cookie (solo si se define `APP_CLAVE`) |
+| `/api/login`, `/api/logout`, `/api/sesion` | POST / GET | **Fase III.** Entrar con uno de los 3 usuarios (administrador, operador, consultor) con sesión por cookie. `/api/sesion` (pública) dice si hay que entrar, con qué usuarios y qué permisos tiene quien ya entró |
 | `/alumnos?q=...` | GET | Busca alumnos por nombre, CURP o matrícula |
 | `/alumnos/por-curp/{curp}` | GET | Alumno(s) con esa CURP (valida el formato) |
 | `/alumnos/{id}/destino?categoria=...` | GET | Nombre con el que se guardaría el archivo y documentos que ya tiene de ese tipo |
@@ -161,7 +161,7 @@ Para detener: `Ctrl + C` y `docker compose down`
 docker compose ps
 ```
 
-**b) Pruebas automáticas dentro del contenedor** (28 pruebas):
+**b) Pruebas automáticas dentro del contenedor** (38 pruebas):
 
 ```bash
 docker compose run --rm api pytest -v
@@ -247,7 +247,7 @@ docker push MI-USUARIO/clasificador-documentos:fase3
 | `DB_USER`, `DB_PASSWORD` | — | Credenciales (en local, desde `.env`) |
 | `ARCHIVOS_DIR` | `/data/expedientes/archivos` | Carpeta donde se guardan los PDFs (la carpeta de *eliminados* queda al lado: `archivos_eliminados`) |
 | `API_PUERTO`, `DB_PUERTO` | `8000`, `3307` | Puertos en tu computadora (en `.env`, solo si están ocupados) |
-| `APP_CLAVE` | *(vacío = sin contraseña)* | **Fase III.** Contraseña para entrar a la página: texto tal cual o el hash `pbkdf2_sha256$...` de `config.ini` del programa de escritorio. Obligatoria con datos reales |
+| `CLAVE_ADMINISTRADOR`, `CLAVE_OPERADOR`, `CLAVE_CONSULTOR` | *(vacías = sin login)* | **Fase III.** Contraseña de cada usuario fijo: texto tal cual o el hash `pbkdf2_sha256$...` de `config.ini` del programa de escritorio. `docker-compose.yml` trae contraseñas **de demostración**; cámbialas con datos reales. Si no se define ninguna, la web queda abierta |
 | `HORAS_SESION` | `10` | Duración de la sesión si hay contraseña |
 | `RESPALDOS_DIR` | *(vacío = sin respaldos)* | Carpeta del servidor donde se guardan los respaldos (`/data/expedientes/respaldos` en docker-compose) |
 
@@ -266,8 +266,11 @@ docker push MI-USUARIO/clasificador-documentos:fase3
   personalizan en `.env`, ese archivo **no** se incluye en la imagen (`.dockerignore`) ni se sube a Git (`.gitignore`).
 - El vectorizador del modelo se publica **sin CURPs ni folios** (`herramientas/anonimizar_vectorizador.py`).
 - Eliminar un documento **no borra el PDF**: se mueve a `archivos_eliminados` con una bitácora (`registro_eliminados.csv`).
-- **Fase III: contraseña de acceso opcional** (`APP_CLAVE`): todas las rutas, salvo la página, `/salud` y el inicio de sesión, exigen sesión; la cookie es
-  `HttpOnly` y `SameSite=Strict`; 5 intentos fallidos bloquean la IP 5 minutos; no hay contraseñas en el código. **Con datos reales es obligatoria**, junto con HTTPS.
+- **Fase III: usuarios y roles.** Tres usuarios fijos: **administrador** (todo, incluidos los respaldos), **operador** (todo menos respaldos) y **consultor**
+  (solo consultar y ver PDF). Cada ruta exige un permiso: `consultar` (ver), `capturar` (subir, guardar, eliminar, corregir CURP) o `respaldar`; el **servidor** responde
+  `401` sin sesión y `403` si el rol no alcanza (no depende de que la pantalla oculte botones). La cookie es `HttpOnly` y `SameSite=Strict`; 5 intentos fallidos
+  bloquean la IP 5 minutos; las contraseñas viven en variables de entorno (o como hash), no en el código. Las bitácoras y la descripción de cada archivo guardado
+  llevan el nombre del usuario. Con datos reales hay que cambiar las contraseñas de demostración y usar HTTPS.
 - Los **respaldos** contienen datos personales: solo se habilitan si se define `RESPALDOS_DIR`, solo se descargan archivos con el patrón de nombre que genera el
   sistema (no se acepta ninguna ruta) y, con contraseña activa, requieren sesión.
 - Los **duplicados** se guardan con un nombre que debe empezar con el id del alumno (se valida en el servidor, no solo en la pantalla).

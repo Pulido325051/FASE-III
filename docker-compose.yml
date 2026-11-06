@@ -43,9 +43,11 @@ services:
       MAX_CONCURRENCIA: "2"
       # Respaldos desde la pantalla (base de datos .sql y PDF .zip): se guardan en expedientes/respaldos
       RESPALDOS_DIR: /data/expedientes/respaldos
-      # Contrasena de acceso (opcional). Vacia = sin contrasena (demo con datos ficticios).
-      # OBLIGATORIA si algun dia se usa con datos reales o se publica en internet.
-      APP_CLAVE: ${APP_CLAVE:-}
+      # Usuarios fijos por rol (contrasenas de DEMO con datos ficticios; cambialas en el .env si lo publicas).
+      #   administrador: todo, incluidos los respaldos | operador: todo menos respaldos | consultor: solo consultar
+      CLAVE_ADMINISTRADOR: ${CLAVE_ADMINISTRADOR:-admin-2026}
+      CLAVE_OPERADOR: ${CLAVE_OPERADOR:-operador-2026}
+      CLAVE_CONSULTOR: ${CLAVE_CONSULTOR:-consultor-2026}
     volumes:
       - ./expedientes:/data/expedientes   # carpeta VISIBLE en tu PC: aqui quedan los PDFs de los alumnos
     restart: unless-stopped

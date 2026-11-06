@@ -29,7 +29,7 @@
            color:var(--texto); font:inherit; cursor:pointer; }
   button:not([class*="bt-"]):hover:enabled { border-color:var(--acento); background:var(--cab); }
   button:disabled { opacity:.45; cursor:default; }
-  button[hidden] { display:none; }
+  [hidden] { display:none !important; }   /* tambien para elementos con display:flex */
   button.principal { background:var(--acento); border-color:var(--acento); color:#fff; }
   button.peligro { color:var(--mal); }
   /* botones con un tono suave de color (el color indica para que sirven) */
@@ -115,6 +115,12 @@
     <span id="ayuda" class="suave">Arrastra aquí los PDF o carpetas (a cualquier parte de la ventana), o usa 'Agregar PDFs'.</span>
     <span id="progreso-txt" class="suave" style="margin-left:auto"></span>
     <progress id="progreso" value="0" max="1"></progress>
+  </div>
+  <div id="panel-consultor" class="tabla-scroll" hidden style="margin:10px;padding:28px;text-align:center">
+    <h3 style="margin:0 0 8px">Modo consulta</h3>
+    <p class="suave" style="margin:0 0 14px">Tu usuario (Consultor) puede buscar alumnos, consultar sus expedientes y ver sus archivos.
+      No puede agregar, guardar, eliminar documentos ni hacer respaldos.</p>
+    <button id="b-consultar2" class="bt-lila">Consultar expediente...</button>
   </div>
   <input id="in-pdfs" type="file" accept="application/pdf,.pdf" multiple hidden>
   <input id="in-carpeta" type="file" webkitdirectory hidden>
@@ -236,8 +242,9 @@
   <!-- Entrar (solo si el servidor tiene contrasena) -->
   <dialog id="dlg-login" style="width:min(420px,96vw)">
     <h3>Entrar al sistema</h3>
-    <div class="fila"><label for="l-usuario" style="width:90px">Tu nombre:</label>
-      <input id="l-usuario" type="text" autocomplete="username"></div>
+    <div class="fila"><label for="l-usuario" style="width:90px">Usuario:</label>
+      <select id="l-usuario" style="flex:1"></select></div>
+    <div id="l-desc" class="suave" style="margin:-2px 0 8px 96px"></div>
     <div class="fila"><label for="l-clave" style="width:90px">Contraseña:</label>
       <input id="l-clave" type="password" autocomplete="current-password" style="flex:1"></div>
     <div id="l-error" class="error-txt"></div>
@@ -263,6 +270,8 @@ const ORDEN_PRIORITARIO = ["CURP", "Certificados Secundaria", "Actas de nacimien
 let tipos = [];            // [{categoria, tipo_bd, manual}] en el orden de la app
 let hayBD = false;
 let hayRespaldos = false;
+let permisos = new Set(["consultar", "capturar", "respaldar"]);   // sin login: todo permitido
+let rolActual = null;
 let docs = [];             // documentos de la lista
 let sel = null;            // documento seleccionado
 let contador = 0;
@@ -373,6 +382,7 @@ async function revisarYaCargados(d) {
 
 // ------------------------------------------------------------------ lista
 function agregar(archivos) {
+  if (!permisos.has("capturar")) return;   // el Consultor no agrega documentos
   const clave = (f) => `${f.name}|${f.size}|${f.lastModified}`;
   const existentes = new Set(docs.map(d => clave(d.file)));
   let nuevos = 0;
@@ -699,6 +709,7 @@ $("b-todos").onclick = async () => {
 // ------------------------------------------------------------------ consultar expediente
 let eAlumno = null, eDocs = [], eDoc = null;
 function abrirExpediente(alumno) {
+  if ($("dlg-exp").open) return;
   eAlumno = null; eDoc = null; $("e-alumnos").innerHTML = ""; $("e-docs").innerHTML = "";
   $("e-alumno").textContent = "Selecciona un alumno"; $("e-resumen").textContent = ""; $("e-estado").textContent = "";
   $("e-eliminar").disabled = $("e-abrir").disabled = true;
@@ -799,30 +810,48 @@ $("r-cerrar").onclick = () => { clearTimeout(rTimer); $("dlg-resp").close(); };
 
 // ------------------------------------------------------------------ acceso con contrasena (solo si el servidor la tiene)
 let loginAbierto = false;
-function pedirLogin() {
-  if (loginAbierto) return Promise.resolve();
+async function pedirLogin() {
+  if (loginAbierto) return;
   loginAbierto = true;
+  let usuarios = [];
+  try { usuarios = (await api("/api/sesion")).usuarios || []; } catch {}
+  $("l-usuario").innerHTML = usuarios.map(u => `<option value="${esc(u.usuario)}">${esc(u.nombre)}</option>`).join("");
+  const describir = () => { const u = usuarios.find(x => x.usuario === $("l-usuario").value); $("l-desc").textContent = u ? u.descripcion : ""; };
+  $("l-usuario").onchange = describir; describir();
   return new Promise((resolver) => {
     const dlg = $("dlg-login"); $("l-clave").value = ""; $("l-error").textContent = "";
     dlg.oncancel = (e) => e.preventDefault();   // no se puede cerrar sin entrar
     const entrar = async () => {
       try { const r = await api("/api/login", {method: "POST", headers: {"Content-Type": "application/json"},
           body: JSON.stringify({usuario: $("l-usuario").value, clave: $("l-clave").value})});
-        dlg.close(); loginAbierto = false; mostrarUsuario(r.usuario);
+        dlg.close(); loginAbierto = false; aplicarSesion(r);
         if (!tipos.length) await cargarTipos();   // si la lista de tipos no pudo cargarse antes de entrar
         resolver(); verificarSalud();
+        if (!permisos.has("capturar")) abrirExpediente(null);   // el Consultor entra directo a consultar
       } catch (e) { $("l-error").textContent = e.message; $("l-clave").select(); }
     };
     $("l-entrar").onclick = entrar;
     $("l-clave").onkeydown = (e) => { if (e.key === "Enter") entrar(); };
-    $("l-usuario").onkeydown = (e) => { if (e.key === "Enter") $("l-clave").focus(); };
-    dlg.showModal(); $("l-usuario").focus();
+    dlg.showModal(); $("l-clave").focus();
   });
 }
-function mostrarUsuario(usuario) {
+// Muestra quien entro y deja a la vista solo lo que su rol puede usar (el servidor ademas lo exige: 403)
+function aplicarSesion(info) {
+  const usuario = info && info.usuario;
+  permisos = new Set(info && info.permisos ? info.permisos : ["consultar", "capturar", "respaldar"]);
+  rolActual = info ? info.rol : null;
   $("usuario-sesion").hidden = $("b-salir").hidden = !usuario;
   if (usuario) $("usuario-sesion").textContent = `Sesión: ${usuario}`;
+  const captura = permisos.has("capturar");
+  ["b-pdfs", "b-carpeta", "b-todos"].forEach(i => $(i).hidden = !captura);
+  document.querySelector(".barra.segunda").hidden = !captura;
+  document.querySelector(".ayuda").hidden = !captura;
+  document.querySelector("main").hidden = !captura;
+  $("panel-consultor").hidden = captura;
+  $("e-eliminar").hidden = !captura;
+  $("b-respaldos").hidden = !(hayRespaldos && permisos.has("respaldar"));
 }
+$("b-consultar2").onclick = () => abrirExpediente(null);
 $("b-salir").onclick = async () => { try { await api("/api/logout", {method: "POST"}); } catch {} location.reload(); };
 
 // ------------------------------------------------------------------ cargar archivos (botones y arrastrar)
@@ -853,6 +882,7 @@ window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("dragleave", () => { if (--niveles <= 0) { niveles = 0; arrastre(false); } });
 window.addEventListener("drop", async (e) => {
   e.preventDefault(); niveles = 0; arrastre(false);
+  if (!permisos.has("capturar")) return;
   const items = [...(e.dataTransfer.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
   if (!items.length) return agregar([...e.dataTransfer.files]);
   const archivos = []; for (const it of items) archivos.push(...await archivosDeEntrada(it));
@@ -869,7 +899,7 @@ async function verificarSalud() {
       s.base_datos === "error" ? "Sin conexión a la base de datos" : "Sin base de datos: solo clasificación";
     $("conexion").style.color = (s.base_datos === "error") ? "var(--mal)" : "";
     ["b-todos", "b-consultar"].forEach(i => $(i).disabled = !hayBD);
-    $("b-respaldos").hidden = !hayRespaldos;
+    $("b-respaldos").hidden = !(hayRespaldos && permisos.has("respaldar"));
     if (!s.modelo_cargado) setTimeout(verificarSalud, 3000);
   } catch { $("conexion").textContent = "Servicio no disponible"; $("conexion").style.color = "var(--mal)"; }
   pintarDetalle();
@@ -884,10 +914,11 @@ async function cargarTipos() {
 (async function iniciar() {
   try {   // contrasena: si el servidor la pide y no hay sesion, se pide antes de cargar nada
     const ses = await api("/api/sesion");
-    if (ses.requiere_clave && !ses.usuario) await pedirLogin(); else mostrarUsuario(ses.usuario);
+    if (ses.requiere_clave && !ses.usuario) await pedirLogin(); else aplicarSesion(ses.requiere_clave ? ses : null);
   } catch {}
   await cargarTipos();
   await verificarSalud(); pintarLista(); pintarDetalle();
+  if (!permisos.has("capturar")) abrirExpediente(null);   // el Consultor entra directo a consultar
 })();
 </script>
 </body>

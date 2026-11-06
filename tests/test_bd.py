@@ -283,3 +283,63 @@ def test_respaldo_de_archivos_en_zip(cliente, tmp_path, monkeypatch):
             assert z.testzip() is None and any(n.endswith("1_CURP.pdf") for n in z.namelist())
     finally:
         _limpiar_alumna_demo()
+
+
+# ---------------------------------------------------------------- Fase III: roles con la base de datos
+def test_roles_con_base_de_datos(cliente, tmp_path, monkeypatch):
+    claves = {"administrador": "adm-p", "operador": "ope-p", "consultor": "con-p"}
+    monkeypatch.setattr(main, "CLAVES", claves)
+    monkeypatch.setattr(main, "RESPALDOS_DIR", str(tmp_path / "respaldos"))
+    main.intentos_fallidos.clear()
+
+    def entrar(rol):
+        cliente.cookies.clear()
+        assert cliente.post("/api/login", json={"usuario": rol, "clave": claves[rol]}).status_code == 200
+
+    _limpiar_alumna_demo()
+    try:
+        # OPERADOR: guarda (queda su nombre en la BD), pero no respalda
+        entrar("operador")
+        r = cliente.post("/guardar", data={"id_alumno": 1, "categoria": "CURP"}, files=_pdf())
+        assert r.status_code == 200 and r.json()["guardado_como"] == "1_CURP.pdf"
+        con = main.estado["bd"]._conectar()
+        try:
+            with con.cursor() as cur:
+                cur.execute("SELECT descripcion FROM archivos WHERE nombre = %s", ("1_CURP.pdf",))
+                assert "Operador" in cur.fetchone()[0]
+        finally:
+            con.close()
+        assert cliente.post("/respaldo/bd").status_code == 403
+
+        # CONSULTOR: consulta y ve el PDF, pero no guarda, ni elimina, ni corrige, ni respalda
+        entrar("consultor")
+        docs = cliente.get("/alumnos/1/expediente").json()
+        assert len(docs) == 1
+        pdf = cliente.get(f"/alumnos/1/expediente/{docs[0]['id']}/pdf")
+        assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+        assert cliente.get("/alumnos", params={"q": "EJEMPLO"}).status_code == 200
+        assert cliente.post("/guardar", data={"id_alumno": 1, "categoria": "CURP", "modo": "adicional"},
+                            files=_pdf()).status_code == 403
+        assert cliente.delete(f"/alumnos/1/expediente/{docs[0]['id']}").status_code == 403
+        assert cliente.post("/alumnos/1/curp", json={"curp": "ZZZZ000101HCHXXX04"}).status_code == 403
+        assert cliente.post("/respaldo/bd").status_code == 403
+        assert len(cliente.get("/alumnos/1/expediente").json()) == 1        # nada cambio
+
+        # OPERADOR: si puede eliminar documentos
+        entrar("operador")
+        assert cliente.delete(f"/alumnos/1/expediente/{docs[0]['id']}").status_code == 200
+        assert cliente.get("/alumnos/1/expediente").json() == []
+
+        # ADMINISTRADOR: respalda; el consultor no puede descargar el respaldo
+        entrar("administrador")
+        assert cliente.post("/respaldo/bd").status_code == 200
+        e = _esperar_fin(cliente)
+        assert e["error"] is None, e
+        nombre = e["resultado"]["archivo"]
+        assert cliente.get(f"/respaldo/descargar/{nombre}").status_code == 200
+        entrar("consultor")
+        assert cliente.get(f"/respaldo/descargar/{nombre}").status_code == 403
+    finally:
+        cliente.cookies.clear()
+        monkeypatch.setattr(main, "CLAVES", {})
+        _limpiar_alumna_demo()

@@ -134,7 +134,7 @@ gcloud run deploy clasificador-documentos \
 
 - `--source .` construye la imagen con el `Dockerfile` usando Cloud Build y la publica. La primera vez pregunta si crear un repositorio de imágenes: responde **Y**.
 - `--max-instances 2` limita el gasto.
-- `--allow-unauthenticated` hace público el servicio. **Úsalo solo con datos ficticios**: la aplicación todavía no tiene contraseña de acceso.
+- `--allow-unauthenticated` hace público el servicio. **Úsalo solo con datos ficticios**: los usuarios de la demostración tienen contraseñas que aparecen en el README; cámbialas antes de publicarlo.
 
 ### Paso 5. Verificar
 
@@ -263,7 +263,7 @@ gcloud run services update clasificador-documentos --region us-central1 \
 | Aspecto | Acción |
 |---|---|
 | Datos | Usar **solo datos ficticios** en un despliegue público |
-| Acceso | Desde la Fase III la aplicación puede pedir **contraseña** (variable `APP_CLAVE`; sin ella queda abierta). Para publicarla con datos reales, `APP_CLAVE` es **obligatoria** y debe guardarse en el gestor de secretos |
+| Acceso | Desde la Fase III la aplicación tiene **3 usuarios con roles** (administrador, operador y consultor; variables `CLAVE_ADMINISTRADOR`, `CLAVE_OPERADOR` y `CLAVE_CONSULTOR`). `docker-compose.yml` trae contraseñas de **demostración**: para publicarla con datos reales hay que cambiarlas y guardarlas en el gestor de secretos |
 | Secretos | Contraseñas en el gestor de secretos de la nube, no en el código ni en el repositorio |
 | Red | No exponer el puerto de MySQL; limitar el acceso a la base |
 | HTTPS | Activo en Cloud Run y Azure por omisión; en una máquina virtual, con Caddy |
