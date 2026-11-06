@@ -1,8 +1,8 @@
-# FASE II — Sistema de Expedientes con IA (versión web en Docker)
+# FASE III — Sistema de Expedientes con IA (versión web en Docker)
 
-> 🚧 **Estado: Fase II = avance del proyecto, no la versión final.** Funciona de punta a punta con una base de datos
-> **de prueba** (datos inventados). Más abajo, en [Estado de esta fase](#estado-de-esta-fase), se explica qué ya está
-> hecho y qué falta para el proyecto final.
+> 🚧 **Estado: Fase III = última entrega del proyecto (mejora de la Fase II).** Funciona de punta a punta con una base
+> de datos **de prueba** (datos inventados). Lo nuevo frente a la Fase II está resumido en
+> [`docs/NOVEDADES_FASE_III.md`](docs/NOVEDADES_FASE_III.md) y, más abajo, en [Estado de esta fase](#estado-de-esta-fase).
 
 Este proyecto es un **programa que lee documentos escolares escaneados** (en PDF) y dice
 automáticamente:
@@ -26,22 +26,25 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 
 ### Estado de esta fase
 
-| ✅ Ya está en la Fase II | ⏳ Falta para el proyecto final |
+| ✅ Ya está en la Fase III | ⏳ Falta para usarlo con datos reales |
 |---|---|
-| Modelo de IA que clasifica 6 tipos de documento (~97 % de exactitud) | Conectarlo a la base de datos **real** de Control Escolar (hoy solo usa la de prueba) |
-| Lectura de CURP, nombre y fecha con OCR | Contraseña de acceso y HTTPS (la app de escritorio ya pide contraseña) |
-| Pantalla web igual a la app de escritorio (lotes, colores, revisión) | Usuarios y permisos distintos |
-| Guardar, reemplazar, adicional, consultar y eliminar con papelera | Respaldos automáticos de los expedientes |
-| Todo en Docker con un solo comando, base de datos de prueba incluida | Publicarlo en un servidor de la escuela o en la nube |
-| 17 pruebas automáticas y esta guía | |
+| Modelo de IA que clasifica 6 tipos de documento (~97 % de exactitud), entrenado con ~4,200 documentos | Conectarlo a la base de datos **real** de Control Escolar (hoy usa la de prueba) |
+| Lectura de CURP, nombre y fecha con OCR | HTTPS (certificado) y usuarios con permisos distintos |
+| Pantalla web igual a la app de escritorio (lotes, colores, revisión) y botones con tonos suaves | Respaldos automáticos programados (hoy se hacen a mano desde la pantalla) |
+| **Nuevo:** aviso de «ya tiene este documento» al leer el PDF (fila turquesa) y botones para **limpiar la lista** de golpe | Publicarlo en un servidor de la escuela o en la nube |
+| **Nuevo:** duplicados con nombre (el id del alumno va fijo) y categoría **«Duplicado»** que se elige a mano | |
+| **Nuevo:** alumno encontrado por nombre sin CURP no pide revisión; **corregir la CURP** del alumno en la BD (con bitácora) | |
+| **Nuevo:** **respaldos** de la base de datos (.sql) y de los PDF (.zip) desde la pantalla; **contraseña de acceso** opcional | |
+| Guardar, reemplazar, consultar y eliminar con papelera; todo en Docker con un solo comando | |
+| 28 pruebas automáticas y esta guía | |
 
 ### ⚡ Resumen para quien ya sabe Docker
 
 ```bash
-git clone https://github.com/Pulido325051/FASE-II.git && cd FASE-II
+git clone https://github.com/Pulido325051/FASE-III.git && cd FASE-III
 docker compose up --build        # primera vez: 5–15 min
 # abrir http://localhost:8000
-docker compose run --rm api pytest -v     # debe terminar con "17 passed"
+docker compose run --rm api pytest -v     # debe terminar con "28 passed"
 ```
 
 No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defecto.
@@ -62,16 +65,17 @@ No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defe
 10. [Apagar y volver a encender](#10-apagar-y-volver-a-encender)
 11. [Si algo sale mal](#11-si-algo-sale-mal)
 12. [¿Qué hay en cada carpeta?](#12-qué-hay-en-cada-carpeta)
-13. [Fase I (escritorio) frente a Fase II (web)](#13-fase-i-escritorio-frente-a-fase-ii-web)
+13. [Fase I (escritorio) frente a Fase III (web)](#13-fase-i-escritorio-frente-a-fase-iii-web)
 14. [Palabras que quizá no conozcas](#14-palabras-que-quizá-no-conozcas)
 
-### 📄 Documentación de la Fase II
+### 📄 Documentación de la Fase III
 
 | Documento | Qué contiene |
 |---|---|
 | [`docs/EVIDENCIA_INTEGRACION.md`](docs/EVIDENCIA_INTEGRACION.md) | Evidencia de integración: cada endpoint de la API con peticiones y respuestas reales |
 | [`docs/MANUAL_DESPLIEGUE_NUBE.md`](docs/MANUAL_DESPLIEGUE_NUBE.md) (también en `.docx`) | Manual de despliegue en la nube: requerimientos, estrategia y pasos (Cloud Run, Azure, máquina virtual) |
 | [`docs/DETALLES_TECNICOS.md`](docs/DETALLES_TECNICOS.md) | Detalle técnico: arquitectura, API, seguridad |
+| [`docs/NOVEDADES_FASE_III.md`](docs/NOVEDADES_FASE_III.md) | **Qué cambió de la Fase II a la Fase III** y por qué (con la evidencia de las pruebas) |
 
 ---
 
@@ -158,13 +162,13 @@ docker compose version
 
 **4. Descargar el proyecto.**
 
-- *Con el ZIP:* haz doble clic en `FASE-II.zip` (se descomprime solo), mueve la carpeta **`FASE-II`** a tu carpeta personal (la de tu usuario, no a Escritorio ni Documentos si usas iCloud).
-- *O con Git:* `git clone https://github.com/Pulido325051/FASE-II.git`
+- *Con el ZIP:* haz doble clic en `FASE-III.zip` (se descomprime solo), mueve la carpeta **`FASE-III`** a tu carpeta personal (la de tu usuario, no a Escritorio ni Documentos si usas iCloud).
+- *O con Git:* `git clone https://github.com/Pulido325051/FASE-III.git`
 
-**5. Encender el sistema.** En la Terminal, entra a la carpeta y enciende (en lugar de `cd C:\FASE-II` se usa `cd ~/FASE-II`):
+**5. Encender el sistema.** En la Terminal, entra a la carpeta y enciende (en lugar de `cd C:\FASE-III` se usa `cd ~/FASE-III`):
 
 ```
-cd ~/FASE-II
+cd ~/FASE-III
 docker compose up --build -d
 docker compose ps
 ```
@@ -172,7 +176,7 @@ docker compose ps
 Espera a que `api` y `db` digan **(healthy)** (la primera vez tarda de 5 a 15 minutos) y abre **http://localhost:8000** en Safari, Chrome o Firefox.
 
 **6. Probar y apagar.** Todo lo demás del manual es igual: las pruebas (`docker compose run --rm api pytest -v`), apagar (`docker compose down`) y encender (`docker compose up -d`).
-Para copiar el archivo de ajustes usa `cp .env.example .env` en lugar de `copy`. La carpeta `expedientes` aparece en el Finder dentro de `FASE-II`.
+Para copiar el archivo de ajustes usa `cp .env.example .env` en lugar de `copy`. La carpeta `expedientes` aparece en el Finder dentro de `FASE-III`.
 
 **Problemas frecuentes en Mac:**
 
@@ -196,8 +200,8 @@ El repositorio es **público**: no necesitas invitación ni cuenta de GitHub par
 1. Entra a la página del repositorio en GitHub.
 2. Haz clic en el botón verde **"<> Code"** y luego en **"Download ZIP"**.
 3. Abre la carpeta **Descargas**, haz clic derecho sobre el ZIP y elige **"Extraer todo…"**.
-4. Mueve la carpeta extraída al disco `C:` y cámbiale el nombre a **`FASE-II`**.
-   Debe quedar así: `C:\FASE-II` (dentro deben verse `Dockerfile`, `docker-compose.yml`, `app`, etc.).
+4. Mueve la carpeta extraída al disco `C:` y cámbiale el nombre a **`FASE-III`**.
+   Debe quedar así: `C:\FASE-III` (dentro deben verse `Dockerfile`, `docker-compose.yml`, `app`, etc.).
 
 > Recomendado: guárdala en el disco `C:` y **no** en una memoria USB. Docker trabaja
 > más rápido y sin errores desde el disco de la computadora.
@@ -206,26 +210,26 @@ El repositorio es **público**: no necesitas invitación ni cuenta de GitHub par
 
 ```
 cd C:\
-git clone https://github.com/Pulido325051/FASE-II.git
+git clone https://github.com/Pulido325051/FASE-III.git
 ```
 
 ---
 
 ## 5. Encender el sistema
 
-> **Mac:** usa `cd ~/FASE-II` en la Terminal (ver «En Mac», paso 3).
+> **Mac:** usa `cd ~/FASE-III` en la Terminal (ver «En Mac», paso 3).
 
 1. Asegúrate de que **Docker Desktop esté abierto** y diga **"Engine running"**.
 2. Abre **Símbolo del sistema** (`cmd`), entra a la carpeta del proyecto y enciende:
 
    ```
-   cd C:\FASE-II
+   cd C:\FASE-III
    docker compose up --build -d
    ```
 
 3. **La primera vez tarda entre 5 y 15 minutos**, porque descarga todo lo necesario.
    Verás muchas líneas de texto: es normal. Espera a que vuelva a aparecer la línea
-   para escribir (`C:\FASE-II>`).
+   para escribir (`C:\FASE-III>`).
 4. Revisa que todo esté encendido con:
 
    ```
@@ -266,6 +270,12 @@ Verás la pantalla **"Expedientes - Control Escolar"**. Arriba a la derecha debe
 | **Guardar en expediente** | Guarda el documento seleccionado (`<idAlumno>_<TIPO>.pdf`) |
 | **Guardar todos los 'Listo'** | Guarda de una vez todos los documentos en verde |
 | **Consultar expediente…** | Busca un alumno (nombre, CURP o matrícula) y muestra sus documentos; ahí se puede **abrir** o **eliminar** un documento |
+| **Limpiar la lista** (fila de botones) | **Quitar los guardados**, **quitar los que ya están cargados** (turquesa) y **quitar los que no están en la BD**: quitan de la pantalla, de golpe, los documentos que ya no hace falta revisar. No borran nada del expediente |
+| **Corregir CURP del alumno en la BD…** | Cuando la CURP del alumno está mal escrita en la base de datos, la cambia por la correcta (pide confirmación y la anota en una bitácora) |
+| **Respaldos…** | Respalda la base de datos (.sql) o los PDF (.zip) en el servidor y permite descargarlos |
+| **Tipo de documento → Duplicado** | La IA no puede saber que un PDF es un duplicado (no lo dice); se elige **a mano** en la lista y se guarda como `<id>_DUPLICADO.pdf` |
+
+Cada botón tiene un **tono suave de color** según lo que hace (verde = guardar, azul = agregar o buscar, turquesa/amarillo = limpiar, lila = consultar, durazno = cambiar un dato, rosa = quitar).
 
 ### Qué significan los colores
 
@@ -274,6 +284,7 @@ Verás la pantalla **"Expedientes - Control Escolar"**. Arriba a la derecha debe
 | ⚪ sin color | En cola / Leyendo… | Esperando o procesándose |
 | 🟩 verde | **Listo** | Todo coincide: se puede guardar |
 | 🟨 amarillo | **Revisar** | Hay una duda (se explica en la columna *Nota*): confirma o corrige antes de guardar |
+| 🟦 turquesa | **Revisar** · ya tiene ese documento | El alumno **ya tiene cargado** ese documento: al guardar se puede dejar el anterior y agregar éste con otro nombre, o reemplazarlo |
 | 🟦 azul | **Guardado** | Ya está en el expediente del alumno |
 | 🟥 rojo | **Error** | No se pudo leer o guardar (la nota dice por qué) |
 
@@ -293,9 +304,20 @@ En la carpeta `ejemplos` hay dos documentos **inventados** de la alumna ficticia
 
 ### Pruebas extra (para ver todo lo que hace)
 
-- **Reemplazar o adicional:** quita los documentos guardados de la lista (**Quitar guardados de la lista**), carga otra vez
-  `constancia_curp_ficticia.pdf` y pulsa **Guardar en expediente**: como la alumna ya tiene su CURP, el sistema pregunta
-  **Reemplazar / Guardar como adicional / Cancelar**. (En *Guardar todos* estos casos se dejan en amarillo para decidir uno por uno.)
+- **Ya tiene ese documento:** quita los documentos guardados de la lista (**Quitar los guardados**) y carga otra vez
+  `constancia_curp_ficticia.pdf`: al leerlo, la fila sale **turquesa** con el aviso *«YA TIENE este documento cargado»*.
+  Pulsa **Guardar en expediente**: el sistema pregunta **Guardarlo también, con otro nombre / Cambiar el anterior por este / No guardarlo**.
+- **Duplicado con nombre:** elige *Guardarlo también, con otro nombre*. Aparece el nombre con el **número del alumno fijo**
+  (`1_`) y propone `DUPLICADO`; solo se escribe el resto. Si el nombre está repetido o trae símbolos prohibidos, lo avisa.
+- **Categoría «Duplicado»:** carga el PDF, elige **Duplicado** en *Tipo de documento* y guárdalo: queda como `1_DUPLICADO.pdf`
+  (y el siguiente como `1_DUPLICADO_2.pdf`). No genera el aviso de «ya tiene este documento».
+- **Limpiar de golpe:** con varios documentos turquesa, pulsa **Quitar los que ya están cargados**. Para los que traen una CURP que no
+  existe en la base, **Quitar los que no están en la BD** (por ejemplo, cambia la CURP a `XXXX000101HCHXXX04` y pulsa *Buscar alumno por CURP*).
+- **Corregir la CURP en la BD:** escribe en el cuadro *CURP* una CURP válida (con «dígito verificador OK») distinta a la del alumno y pulsa
+  **Corregir CURP del alumno en la BD…**: muestra la CURP actual y la nueva y pide confirmación. Queda anotado en `expedientes/registro_cambios_curp.csv`.
+- **Respaldos:** pulsa **Respaldos…** → **Respaldar la base de datos**. Aparece en la lista y se puede **descargar**; los archivos quedan en
+  `expedientes/respaldos` (visibles en tu PC).
+- **Contraseña (opcional):** pon `APP_CLAVE=tu-contraseña` en el `.env` y vuelve a encender (`docker compose up -d`): la página pedirá nombre y contraseña.
 - **Corregir datos:** selecciona un documento, cambia el **Tipo de documento** o escribe otra **CURP** y pulsa
   **Buscar alumno por CURP**. Si el documento no tiene CURP legible, usa **Buscar por nombre…** y elige al alumno.
 - **Eliminar sin perder:** en *Consultar expediente…*, elige un documento y pulsa **Eliminar documento…**. Se quita del
@@ -317,7 +339,7 @@ En la carpeta `ejemplos` hay dos documentos **inventados** de la alumna ficticia
 ## 7. Dónde se guardan los archivos de los alumnos
 
 Cuando pulsas **Guardar en expediente**, el PDF se guarda en la carpeta **`expedientes`** que está dentro del proyecto
-(por ejemplo `C:\FASE-II\expedientes`). Es una carpeta normal de tu computadora: ábrela con el Explorador de Windows.
+(por ejemplo `C:\FASE-III\expedientes`). Es una carpeta normal de tu computadora: ábrela con el Explorador de Windows.
 
 ```
 expedientes/
@@ -354,7 +376,7 @@ En esta fase se usa una base **inventada**, que viene incluida y se crea **sola*
 
 - *Con DBeaver o MySQL Workbench:* servidor `localhost`, puerto **3307**, base `controlescolar_prueba`, usuario `clasificador`, contraseña `prueba-2026`
   (o los datos de tu `.env` si los cambiaste).
-- *Sin instalar nada*, desde la terminal dentro de `C:\FASE-II`:
+- *Sin instalar nada*, desde la terminal dentro de `C:\FASE-III`:
 
   ```
   docker compose exec db mysql -uclasificador -pprueba-2026 controlescolar_prueba -e "SELECT id, nombre, apaterno, curp FROM alumnos LIMIT 5;"
@@ -387,9 +409,9 @@ luego reinicia con los dos comandos de arriba.
 
 ## 9. Comprobar que todo funciona (pruebas automáticas)
 
-El proyecto trae **17 pruebas automáticas** que revisan todo el sistema por ti.
+El proyecto trae **28 pruebas automáticas** que revisan todo el sistema por ti.
 
-En **Símbolo del sistema**, dentro de `C:\FASE-II`, escribe:
+En **Símbolo del sistema**, dentro de `C:\FASE-III`, escribe:
 
 ```
 docker compose run --rm api pytest -v
@@ -398,7 +420,7 @@ docker compose run --rm api pytest -v
 Espera menos de un minuto. Al final debe decir:
 
 ```
-17 passed
+28 passed
 ```
 
 Qué revisan las pruebas:
@@ -416,7 +438,7 @@ Las pruebas dejan la base de datos como estaba.
 
 ## 10. Apagar y volver a encender
 
-| Quiero… | Escribe (dentro de `C:\FASE-II`) |
+| Quiero… | Escribe (dentro de `C:\FASE-III`) |
 |---|---|
 | **Apagar** el sistema | `docker compose down` |
 | **Encenderlo** otra vez | `docker compose up -d` |
@@ -458,7 +480,7 @@ Las pruebas dejan la base de datos como estaba.
 | `db/` | La base de datos de prueba: estructura de las tablas y 100 alumnos **inventados** (ver sección 8) |
 | `expedientes/` | **Aquí se guardan los PDFs de los alumnos** al pulsar *Guardar en expediente* (ver sección 7). Su contenido no se sube a GitHub |
 | `ejemplos/` | Dos documentos PDF **inventados** para probar |
-| `tests/` | Las 17 pruebas automáticas |
+| `tests/` | Las 28 pruebas automáticas |
 | `herramientas/` | `anonimizar_vectorizador.py`: quita datos personales del modelo antes de publicarlo (ver abajo) |
 | `docs/` | Documentación: evidencia de integración, manual de despliegue en la nube (Markdown y Word), capturas en `docs/capturas/` y detalle técnico |
 | `Dockerfile` | Las instrucciones para armar el contenedor del programa |
@@ -478,16 +500,18 @@ python herramientas/anonimizar_vectorizador.py vectorizador.pkl modelo/vectoriza
 
 ---
 
-## 13. Fase I (escritorio) frente a Fase II (web)
+## 13. Fase I (escritorio) frente a Fase III (web)
 
-| | Fase I — Escritorio | **Fase II — Web (este proyecto)** |
+| | Fase I — Escritorio | **Fase III — Web (este proyecto)** |
 |---|---|---|
 | Se usa en | Ventana de Windows (`.exe`) | Navegador |
 | Instalación | Tesseract + Poppler + `config.ini` en cada PC | **Docker**: `docker compose up` |
-| Base de datos | MySQL real de Control Escolar | MySQL de **prueba** (datos inventados) incluida; la conexión a la real queda para el proyecto final |
-| Pantalla y flujo | Lista por lotes, estados de colores, revisión, expediente | **El mismo** |
-| Reemplazar / adicional / eliminar (con papelera) | Sí | Sí |
-| Contraseña de acceso | Sí | **Pendiente** (hay que agregarla antes de usar datos reales) |
+| Base de datos | MySQL real de Control Escolar | MySQL de **prueba** (datos inventados) incluida; la conexión a la real queda para la puesta en producción |
+| Pantalla y flujo | Lista por lotes, estados de colores, revisión, expediente | **El mismo**, con las mejoras de la Fase III |
+| Reemplazar / duplicado con nombre / eliminar (con papelera) | Sí | Sí |
+| Categoría «Duplicado», «ya tiene ese documento», limpiar la lista, corregir CURP | Sí | Sí |
+| Respaldos (base de datos y archivos) | Sí (botón «Respaldos…») | Sí (se guardan en el servidor y se descargan) |
+| Contraseña de acceso | Sí | Sí, **opcional** (`APP_CLAVE` en el `.env`; obligatoria con datos reales) |
 | Otros programas pueden usarlo (API) | No | Sí (`/docs`) |
 
 ---
