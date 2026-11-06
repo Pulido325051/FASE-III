@@ -5,6 +5,10 @@ cambia el modelo ni el flujo base**: agrega las mejoras que salieron de usar el 
 (documentos duplicados, CURP mal escritas en la BD, listas largas que hay que limpiar a mano) y las que la Fase II dejó
 pendientes (contraseña de acceso, respaldos).
 
+> **¿Dónde quedó la Fase II?** Este repositorio empezó como *FASE-II* y se renombró a *FASE-III*: conserva **todo el historial**.
+> La entrega de la Fase II está marcada con la etiqueta **`fase-2`** (`git checkout fase-2`, o en GitHub: *Releases / Tags → fase-2*).
+> Los enlaces antiguos a `FASE-II` siguen funcionando (GitHub redirige al nombre nuevo).
+
 ## Resumen
 
 | # | Novedad | Para qué sirve |
