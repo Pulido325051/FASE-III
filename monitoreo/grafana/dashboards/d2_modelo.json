@@ -139,7 +139,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(rate(expedientes_baja_confianza_total[5m])) / clamp_min(sum(rate(expedientes_prediccion_total[5m])), 0.0001)",
+     "expr": "clamp_max(sum(rate(expedientes_baja_confianza_total[5m])) / clamp_min(sum(rate(expedientes_prediccion_total[5m])), 0.0001), 1)",
      "legendFormat": "",
      "datasource": {
       "type": "prometheus",
@@ -201,7 +201,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(rate(expedientes_curp_verificada_total[5m])) / clamp_min(sum(rate(expedientes_prediccion_total[5m])), 0.0001)",
+     "expr": "clamp_max(sum(rate(expedientes_curp_verificada_total[5m])) / clamp_min(sum(rate(expedientes_prediccion_total[5m])), 0.0001), 1)",
      "legendFormat": "",
      "datasource": {
       "type": "prometheus",
@@ -496,7 +496,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum(rate(expedientes_curp_verificada_total[2m])) / clamp_min(sum(rate(expedientes_prediccion_total[2m])), 0.0001)",
+     "expr": "clamp_max(sum(rate(expedientes_curp_verificada_total[2m])) / clamp_min(sum(rate(expedientes_prediccion_total[2m])), 0.0001), 1)",
      "legendFormat": "CURP verificada",
      "datasource": {
       "type": "prometheus",
@@ -505,7 +505,7 @@
     },
     {
      "refId": "B",
-     "expr": "sum(rate(expedientes_nombre_encontrado_total[2m])) / clamp_min(sum(rate(expedientes_prediccion_total[2m])), 0.0001)",
+     "expr": "clamp_max(sum(rate(expedientes_nombre_encontrado_total[2m])) / clamp_min(sum(rate(expedientes_prediccion_total[2m])), 0.0001), 1)",
      "legendFormat": "Nombre",
      "datasource": {
       "type": "prometheus",
@@ -514,7 +514,7 @@
     },
     {
      "refId": "C",
-     "expr": "sum(rate(expedientes_fecha_encontrada_total[2m])) / clamp_min(sum(rate(expedientes_prediccion_total[2m])), 0.0001)",
+     "expr": "clamp_max(sum(rate(expedientes_fecha_encontrada_total[2m])) / clamp_min(sum(rate(expedientes_prediccion_total[2m])), 0.0001), 1)",
      "legendFormat": "Fecha de nacimiento",
      "datasource": {
       "type": "prometheus",
