@@ -1,0 +1,81 @@
+# Reglas de alerta con umbrales ESCALADOS PARA LA DEMO (ventanas de minutos en lugar de horas/dias).
+# Los umbrales de produccion estan en el documento tecnico (SLO 99 %, burn rate 14,4x en 1 h / 6x en 6 h).
+groups:
+  - name: servicio
+    rules:
+      - alert: ApiCaida
+        expr: up{job="api"} == 0
+        for: 15s
+        labels: {severity: critical, runbook: RB-01}
+        annotations:
+          summary: "La API no responde al scrape de metricas (SLO de disponibilidad en riesgo)"
+          runbook: "RB-01 Servicio no disponible"
+
+      - alert: LatenciaClasificarAlta
+        expr: histogram_quantile(0.95, sum by (le) (rate(expedientes_http_request_duration_seconds_bucket{ruta="/clasificar"}[1m]))) > 15
+        for: 20s
+        labels: {severity: warning, runbook: RB-02}
+        annotations:
+          summary: "p95 de /clasificar por encima de 15 s (SLO de latencia incumplido)"
+          runbook: "RB-02 Latencia alta"
+
+      - alert: TasaErroresAlta
+        expr: sum(rate(expedientes_http_requests_total{codigo=~"5.."}[1m])) / clamp_min(sum(rate(expedientes_http_requests_total[1m])), 0.001) > 0.05
+        for: 20s
+        labels: {severity: critical, runbook: RB-01}
+        annotations:
+          summary: "Mas de 5 % de respuestas 5xx en el ultimo minuto"
+          runbook: "RB-01 Servicio no disponible"
+
+      - alert: QuemaDePresupuestoRapida
+        expr: |
+          (sum(rate(expedientes_http_requests_total{codigo=~"5.."}[2m])) / clamp_min(sum(rate(expedientes_http_requests_total[2m])), 0.001)) > 14.4 * 0.01
+          and
+          (sum(rate(expedientes_http_requests_total{codigo=~"5.."}[30s])) / clamp_min(sum(rate(expedientes_http_requests_total[30s])), 0.001)) > 14.4 * 0.01
+        for: 10s
+        labels: {severity: critical, runbook: RB-01}
+        annotations:
+          summary: "El presupuesto de error del SLO 99 % se consume 14,4 veces mas rapido de lo permitido"
+          runbook: "RB-01 Servicio no disponible"
+
+      - alert: BaseDeDatosInaccesible
+        expr: sum(rate(expedientes_http_requests_total{codigo="503"}[1m])) > 0
+        for: 10s
+        labels: {severity: critical, runbook: RB-05}
+        annotations:
+          summary: "La API responde 503: no puede hablar con MySQL"
+          runbook: "RB-05 Base de datos no disponible"
+
+  - name: modelo
+    rules:
+      - alert: BajaConfianzaElevada
+        expr: expedientes_monitor_tasa{indicador="baja_confianza"} > 0.25
+        for: 20s
+        labels: {severity: warning, runbook: RB-03}
+        annotations:
+          summary: "Mas de 25 % de los documentos recientes salen con margen de decision bajo (linea base: ~3 %)"
+          runbook: "RB-03 Degradacion del modelo"
+
+      - alert: DerivaDeDatos
+        expr: max(expedientes_monitor_psi) > 0.25
+        for: 20s
+        labels: {severity: warning, runbook: RB-04}
+        annotations:
+          summary: "PSI > 0,25 en alguna senal de entrada: la poblacion de documentos cambio (data drift)"
+          runbook: "RB-04 Data drift detectado"
+
+      - alert: CorreccionesDeCategoria
+        expr: expedientes_monitor_tasa{indicador="correccion"} > 0.15
+        for: 20s
+        labels: {severity: warning, runbook: RB-03}
+        annotations:
+          summary: "Las personas corrigen mas de 15 % de las clasificaciones (error percibido del modelo)"
+          runbook: "RB-03 Degradacion del modelo"
+
+      - alert: CurpVerificadaBaja
+        expr: expedientes_monitor_tasa{indicador="curp_verificada"} < 0.6
+        for: 20s
+        labels: {severity: warning, runbook: RB-08}
+        annotations:
+          summary: "Menos de 60 % de los documentos recientes traen una CURP con digito verificador correcto (calidad del OCR)"
+          runbook: "RB-08 Fallo de lectura y extraccion"

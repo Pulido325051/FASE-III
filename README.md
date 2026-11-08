@@ -4,6 +4,11 @@
 > de datos **de prueba** (datos inventados). Lo nuevo frente a la Fase II está resumido en
 > [`docs/NOVEDADES_FASE_III.md`](docs/NOVEDADES_FASE_III.md) y, más abajo, en [Estado de esta fase](#estado-de-esta-fase).
 
+> **¿Por qué se llama «FASE III»?** Este repositorio no es una entrega congelada: es el proyecto **en evolución**. Lo sigo analizando y
+> actualizando con lo que me parece conveniente para convertirlo en un sistema **profesional**, y con las necesidades y observaciones que
+> me han hecho mis compañeras de **Control Escolar**, que son quienes lo usarían. Por eso cada mejora (roles, respaldos, duplicados,
+> corrección de CURP, monitoreo) se suma aquí en lugar de abrir un proyecto nuevo.
+
 Este proyecto es un **programa que lee documentos escolares escaneados** (en PDF) y dice
 automáticamente:
 
@@ -36,7 +41,8 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 | **Nuevo:** alumno encontrado por nombre sin CURP no pide revisión; **corregir la CURP** del alumno en la BD (con bitácora) | |
 | **Nuevo:** **respaldos** de la base de datos (.sql) y de los PDF (.zip) desde la pantalla; **login con 3 roles** (administrador, operador y consultor) con permisos distintos | |
 | Guardar, reemplazar, consultar y eliminar con papelera; todo en Docker con un solo comando | |
-| 40 pruebas automáticas y esta guía | |
+| **Nuevo:** **monitoreo MLOps**: métricas, logs y trazas, MLflow, Prometheus, Grafana, alertas, runbooks y detección de *data drift* (sección 15) | |
+| 49 pruebas automáticas y esta guía | |
 
 ### ⚡ Resumen para quien ya sabe Docker
 
@@ -44,7 +50,7 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 git clone https://github.com/Pulido325051/FASE-III.git && cd FASE-III
 docker compose up --build        # primera vez: 5–15 min
 # abrir http://localhost:8000
-docker compose run --rm api pytest -v     # debe terminar con "40 passed"
+docker compose run --rm api pytest -v     # debe terminar con "49 passed"
 ```
 
 No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defecto.
@@ -67,6 +73,7 @@ No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defe
 12. [¿Qué hay en cada carpeta?](#12-qué-hay-en-cada-carpeta)
 13. [Fase I (escritorio) frente a Fase III (web)](#13-fase-i-escritorio-frente-a-fase-iii-web)
 14. [Palabras que quizá no conozcas](#14-palabras-que-quizá-no-conozcas)
+15. [Monitoreo MLOps: MLflow, Prometheus y Grafana](#15-monitoreo-mlops-mlflow-prometheus-y-grafana)
 
 ### 📄 Documentación de la Fase III
 
@@ -427,7 +434,7 @@ luego reinicia con los dos comandos de arriba.
 
 ## 9. Comprobar que todo funciona (pruebas automáticas)
 
-El proyecto trae **40 pruebas automáticas** que revisan todo el sistema por ti.
+El proyecto trae **49 pruebas automáticas** que revisan todo el sistema por ti.
 
 En **Símbolo del sistema**, dentro de `C:\FASE-III`, escribe:
 
@@ -438,7 +445,7 @@ docker compose run --rm api pytest -v
 Espera menos de un minuto. Al final debe decir:
 
 ```
-40 passed
+49 passed
 ```
 
 Qué revisan las pruebas:
@@ -498,7 +505,9 @@ Las pruebas dejan la base de datos como estaba.
 | `db/` | La base de datos de prueba: estructura de las tablas y 100 alumnos **inventados** (ver sección 8) |
 | `expedientes/` | **Aquí se guardan los PDFs de los alumnos** al pulsar *Guardar en expediente* (ver sección 7). Su contenido no se sube a GitHub |
 | `ejemplos/` | Dos documentos PDF **inventados** para probar |
-| `tests/` | Las 40 pruebas automáticas |
+| `tests/` | Las 49 pruebas automáticas |
+| `monitoreo/` | Scripts y configuración del monitoreo: monitor de *data drift*, entrenamiento y registro en MLflow, runbooks, generador de tráfico, reglas de alerta, Alertmanager y dashboards de Grafana (sección 15) |
+| `docker-compose.monitoreo.yml` | Opcional: enciende, además del sistema, MLflow, Prometheus, Alertmanager, Grafana y el monitor |
 | `herramientas/` | `anonimizar_vectorizador.py`: quita datos personales del modelo antes de publicarlo (ver abajo) |
 | `docs/` | Documentación: evidencia de integración, manual de despliegue en la nube (Markdown y Word), capturas en `docs/capturas/` y detalle técnico |
 | `Dockerfile` | Las instrucciones para armar el contenedor del programa |
@@ -549,3 +558,71 @@ python herramientas/anonimizar_vectorizador.py vectorizador.pkl modelo/vectoriza
 | **Expediente** | El conjunto de documentos registrados de un alumno. En este proyecto los PDFs están en la carpeta `expedientes/`. |
 | **Base de datos de prueba** | Una base con datos inventados para practicar sin tocar información real. |
 | **Modelo** | El programa de inteligencia artificial entrenado con ejemplos para reconocer cada tipo de documento. |
+| **MLflow** | Herramienta que guarda cada entrenamiento del modelo (parámetros y resultados) y lleva el registro de qué versión está en producción. |
+| **Prometheus / Grafana** | Prometheus guarda cada pocos segundos las métricas del sistema y evalúa las alertas; Grafana las dibuja en tableros. |
+| **Data drift** | Cuando los documentos que llegan cambian respecto a los que el modelo aprendió (por ejemplo, escaneos de peor calidad). Se mide con el índice **PSI**. |
+| **Runbook** | Lista de pasos para atender un incidente concreto (diagnosticar, corregir y comprobar que se recuperó). |
+
+---
+
+## 15. Monitoreo MLOps: MLflow, Prometheus y Grafana
+
+Parte de la actividad *Monitorización, mantenimiento y gobernanza operativa (MLOps)*. Es **opcional**: el sistema funciona igual sin esto.
+Con ello se puede ver **en tiempo real** si el servicio está sano, si el modelo sigue acertando y si los documentos que llegan cambiaron.
+
+### Encenderlo
+
+```bash
+docker compose -p fase3mon -f docker-compose.monitoreo.yml up -d --build
+```
+
+Es un proyecto aparte (puertos distintos y base de datos propia), así que puede convivir con el sistema normal.
+
+| Qué | Dirección |
+|---|---|
+| Sistema (API y pantalla) | http://localhost:8200 |
+| **MLflow** (experimentos y registro de modelos) | http://localhost:5000 |
+| **Grafana** (tableros D1 servicio, D2 modelo, D3 deriva, D5 presupuesto de error) | http://localhost:3000 (usuario `admin`, clave `admin-2026`) |
+| Prometheus (métricas y reglas de alerta) | http://localhost:9090 |
+| Alertmanager (agrupa y enruta alertas) | http://localhost:9093 |
+| Receptor de notificaciones (canal simulado) | http://localhost:9099 |
+
+### Qué hay en cada parte
+
+| Archivo | Para qué sirve |
+|---|---|
+| `app/observabilidad.py` | Métricas (`/metrics`), logs JSON con identificador de petición, trazas por etapa (`pdf_a_imagen`, `ocr`, `clasificar`, `extraer`) y eventos **sin datos personales** (nunca CURP, nombre ni texto del documento) |
+| `monitoreo/entrenar_y_registrar.py` | Entrena el modelo, lo registra en MLflow (v1 producción, v2 candidato) y aplica **compuertas de calidad** antes de proponer una versión nueva |
+| `monitoreo/monitor.py` | Calcula el **data drift** (PSI de margen de decisión, palabras, cobertura del vocabulario y mezcla de clases) y las tasas de calidad; las publica a Prometheus y a MLflow |
+| `monitoreo/prometheus/reglas.yml` | **Configuración de las 9 alertas** (API caída, latencia, errores, quema del presupuesto, base de datos, baja confianza, deriva, correcciones, CURP) |
+| `monitoreo/alertmanager/alertmanager.yml` | Agrupación, **inhibición** (si la API cae no se avisa de lo demás) y envío al receptor |
+| `monitoreo/verificar_alertas.py` | Muestra en consola las reglas cargadas y cuáles están activas (`--vigilar` para verlo en vivo) |
+| `monitoreo/runbooks.py` | Ejecuta, con comandos reales y registrando la hora de cada paso, los runbooks de tres incidentes simulados (latencia, data drift y base de datos caída) |
+| `monitoreo/generar_trafico.py` | Genera tráfico y escenarios de falla con los PDFs ficticios de `ejemplos/` |
+| `monitoreo/generar_dashboards.py` | Genera los tableros de Grafana (`monitoreo/grafana/dashboards/`), que se cargan solos |
+| `monitoreo/receptor.py` | Receptor (webhook) que muestra las notificaciones de Alertmanager |
+
+### Probarlo
+
+```bash
+# entrenar y registrar las versiones en MLflow (el dataset se monta solo lectura; no se sube a GitHub)
+docker run --rm --network fase3mon_default -e MLFLOW_TRACKING_URI=http://mlflow:5000 \
+  -v /ruta/a/dataset_700.csv:/datos/dataset_700.csv:ro -v fase3mon_estado:/estado \
+  fase3-mon-tools:1 python entrenar_y_registrar.py
+
+pip install requests pillow                    # solo para los scripts que corren en tu equipo
+python monitoreo/generar_trafico.py normal 40        # tráfico normal (la referencia de deriva se fija con los primeros 30)
+python monitoreo/generar_trafico.py degradado 28     # escaneos malos -> alertas de deriva y baja confianza
+python monitoreo/runbooks.py INC-01                  # latencia alta + ejecución del runbook RB-02
+python monitoreo/verificar_alertas.py
+```
+
+Las pruebas automáticas de esta parte están en `tests/test_observabilidad.py`.
+
+### Qué hay que tener en cuenta
+
+- Los incidentes son **simulados** y los umbrales de las alertas están **escalados a minutos** para poder verlos en una demostración; los valores para producción son otros.
+- La referencia de deriva de la demostración se fija con los primeros 30 documentos del tráfico, que en este caso son los dos PDF ficticios de ejemplo.
+- La inyección de fallas (`/admin/fallas`) solo existe si se define `FALLAS_HABILITADAS=1` (únicamente en `docker-compose.monitoreo.yml`).
+- Se usó MLflow, y no Weights & Biases, para que los datos de los alumnos no salgan del equipo.
+- Las claves de este ejemplo son de **demostración** con datos ficticios; cámbialas si lo publicas.

@@ -32,7 +32,7 @@ COPY pytest.ini ./
 
 # Usuario sin privilegios (buena practica de seguridad) y carpeta para los PDFs guardados
 RUN useradd --create-home --uid 1000 clasificador \
- && mkdir -p /data/expedientes/archivos && chown -R clasificador:clasificador /data
+ && mkdir -p /data/expedientes/archivos /eventos/monitoreo && chown -R clasificador:clasificador /data /eventos
 USER clasificador
 
 EXPOSE 8000

@@ -12,3 +12,4 @@ pdf2image==1.17.0
 # Base de datos (MySQL); cryptography es necesaria para la autenticacion de MySQL 8
 PyMySQL==1.2.0
 cryptography==50.0.1
+prometheus-client==0.26.0
