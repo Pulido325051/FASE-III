@@ -1,0 +1,122 @@
+# Pila de monitoreo MLOps (proyecto independiente de FASE-III):
+#   docker compose -p fase3mon -f docker-compose.monitoreo.yml up -d --build
+# Puertos: API 8200 | MySQL 3317 | MLflow 5000 | Prometheus 9090 | Alertmanager 9093 | Grafana 3000 | Receptor 9099
+# Datos 100 % ficticios en la base de prueba. El dataset de entrenamiento se monta de SOLO LECTURA solo para el
+# contenedor de entrenamiento (a MLflow van metricas y modelos, nunca texto de documentos).
+name: fase3mon
+
+x-mon: &mon
+  build: ./monitoreo
+  image: fase3-mon-tools:1
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root-prueba-2026
+      MYSQL_DATABASE: controlescolar_prueba
+      MYSQL_USER: clasificador
+      MYSQL_PASSWORD: prueba-2026
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - db_datos:/var/lib/mysql
+    ports: ["3317:3306"]
+    command: ["--innodb-buffer-pool-size=64M", "--performance-schema=OFF"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uclasificador -pprueba-2026 --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 400m
+
+  api:
+    build: .
+    image: clasificador-documentos:fase3-mon
+    depends_on:
+      db: {condition: service_healthy}
+    ports: ["8200:8000"]
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: controlescolar_prueba
+      DB_USER: clasificador
+      DB_PASSWORD: prueba-2026
+      ARCHIVOS_DIR: /data/expedientes/archivos
+      RESPALDOS_DIR: /data/expedientes/respaldos
+      MAX_CONCURRENCIA: "2"
+      CLAVE_ADMINISTRADOR: admin-2026
+      CLAVE_OPERADOR: operador-2026
+      CLAVE_CONSULTOR: consultor-2026
+      EVENTOS_PATH: /eventos/monitoreo/eventos.jsonl
+      MODELO_VERSION: v1
+      FALLAS_HABILITADAS: "1"          # solo para las simulaciones; en produccion NO se define
+    volumes:
+      - eventos:/eventos
+      - expedientes_demo:/data/expedientes
+    mem_limit: 700m
+
+  mlflow:
+    <<: *mon
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000",
+              "--backend-store-uri", "sqlite:////mlflow/mlflow.db", "--default-artifact-root", "/mlflow/artefactos"]
+    ports: ["5000:5000"]
+    volumes: ["mlflow:/mlflow"]
+    mem_limit: 450m
+
+  monitor:
+    <<: *mon
+    command: ["python", "monitor.py"]
+    depends_on: [mlflow]
+    environment:
+      EVENTOS_PATH: /eventos/monitoreo/eventos.jsonl
+      REF_PATH: /estado/referencia.json
+      REF_N: "30"
+      VENTANA: "30"
+      CICLO_S: "10"
+    volumes:
+      - eventos:/eventos:ro
+      - estado:/estado
+    mem_limit: 250m
+
+  receptor:
+    <<: *mon
+    command: ["python", "receptor.py"]
+    ports: ["9099:9099"]
+    volumes: ["estado:/estado"]
+    mem_limit: 64m
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=2d"]
+    volumes:
+      - ./monitoreo/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoreo/prometheus/reglas.yml:/etc/prometheus/reglas.yml:ro
+    ports: ["9090:9090"]
+    mem_limit: 250m
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes: ["./monitoreo/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"]
+    ports: ["9093:9093"]
+    mem_limit: 80m
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin-2026
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: light
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./monitoreo/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoreo/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    mem_limit: 250m
+
+volumes:
+  db_datos:
+  eventos:
+  estado:
+  mlflow:
+  expedientes_demo:

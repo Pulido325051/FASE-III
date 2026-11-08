@@ -432,7 +432,7 @@ async function leer(d) {
   try {
     const j = await api("/clasificar", {method: "POST", body: datos});
     if (!docs.includes(d)) return;
-    d.categoria = j.tipo_documento; d.confianza = j.confianza;
+    d.categoria = j.tipo_documento; d.confianza = j.confianza; d.propuesta = j.tipo_documento;
     d.curp = j.curp || ""; d.nombreOcr = j.nombre || ""; d.fecha = j.fecha_nacimiento || "";
     d.alumno = j.alumno || null; d.porNombre = j.encontrado_por === "nombre"; d.avisoBd = j.aviso_bd || "";
     d.motivoNombre = j.motivo_revision_nombre ?? null;
@@ -493,7 +493,12 @@ async function pintarDestino(d) {
 
 $("d-tipo").onchange = () => {
   const d = sel; if (!d || OCUPADO.includes(d.estado)) return pintarDetalle();
-  d.categoria = $("d-tipo").value; d.confianza = null; d.destino = null; d.yaCargados = [];
+  const nueva = $("d-tipo").value;
+  if (d.propuesta && nueva !== d.categoria && d.categoria === d.propuesta) {     // monitoreo: la persona corrige al modelo
+    fetch("/feedback/categoria", {method: "POST", headers: {"Content-Type": "application/json"},
+                                  body: JSON.stringify({de: d.propuesta, a: nueva})}).catch(() => {});
+  }
+  d.categoria = nueva; d.confianza = null; d.destino = null; d.yaCargados = [];
   evaluar(d); refrescar(d); revisarYaCargados(d);
 };
 $("b-abrir-pdf").onclick = () => { if (sel) window.open(URL.createObjectURL(sel.file), "_blank"); };

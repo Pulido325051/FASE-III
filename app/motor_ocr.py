@@ -13,6 +13,8 @@ import pytesseract
 from PIL import Image, ImageOps
 from pdf2image import convert_from_path, pdfinfo_from_path
 
+from .observabilidad import etapa   # trazas: duracion de cada etapa
+
 
 # ----------------------------------------------------------------------------
 # OCR y clasificacion
@@ -338,16 +340,28 @@ class MotorOCR:
         return convert_from_path(pdf_path, poppler_path=self.poppler, dpi=dpi)
 
     def clasificar(self, pdf_path):
-        paginas = self.convertir_pdf(pdf_path)
+        with etapa("pdf_a_imagen"):
+            paginas = self.convertir_pdf(pdf_path)
         # Misma configuracion de OCR que en el entrenamiento (eng, psm 6)
-        textos = [pytesseract.image_to_string(p, lang="eng", config="--psm 6") for p in paginas]
+        with etapa("ocr"):
+            textos = [pytesseract.image_to_string(p, lang="eng", config="--psm 6") for p in paginas]
         texto = "\n".join(textos)
-        vector = self.vectorizador.transform([limpiar_texto(texto)])
-        categoria = ajustar_categoria(self.modelo.predict(vector)[0], textos[0])
-        confianza = None
-        if hasattr(self.modelo, "predict_proba"):
-            confianza = float(max(self.modelo.predict_proba(vector)[0]))
-        return categoria, confianza, texto, paginas
+        with etapa("clasificar"):
+            limpio = limpiar_texto(texto)
+            vector = self.vectorizador.transform([limpio])
+            categoria = ajustar_categoria(self.modelo.predict(vector)[0], textos[0])
+            confianza = None
+            if hasattr(self.modelo, "predict_proba"):
+                confianza = float(max(self.modelo.predict_proba(vector)[0]))
+            # Margen de decision: diferencia entre la 1.a y la 2.a puntuacion (LinearSVC no da probabilidades)
+            puntajes = np.sort(self.modelo.decision_function(vector)[0])
+            margen = float(puntajes[-1] - puntajes[-2])
+            # Cobertura: que fraccion de los terminos del documento conoce el modelo (senal de data drift)
+            terminos = self.vectorizador.build_analyzer()(limpio)
+            vocabulario = self.vectorizador.vocabulary_
+            cobertura = (sum(1 for t in terminos if t in vocabulario) / len(terminos)) if terminos else 0.0
+        extra = {"margen": margen, "palabras": len(limpio.split()), "cobertura": cobertura, "paginas": len(paginas)}
+        return categoria, confianza, texto, paginas, extra
 
     @staticmethod
     def _resolver(textos):
@@ -376,6 +390,12 @@ class MotorOCR:
         return campos["curp_verificada"] and nombre_coincide_curp(campos["nombre"], campos["curp"])
 
     def extraer_datos(self, paginas, texto_base, categoria):
+        with etapa("extraer"):
+            campos, pasadas = self._extraer_datos(paginas, texto_base, categoria)
+        campos["pasadas_extra"] = pasadas
+        return campos
+
+    def _extraer_datos(self, paginas, texto_base, categoria):
         textos = [texto_base]
         campos = self._resolver(textos)
         for pasada in self.pasadas_extra:
@@ -384,11 +404,12 @@ class MotorOCR:
             # Los datos vienen en la primera pagina
             textos.append(pasada(paginas[0]))
             campos = self._resolver(textos)
-        return campos
+        return campos, len(textos) - 1
 
     def procesar(self, pdf_path):
-        categoria, confianza, texto, paginas = self.clasificar(pdf_path)
+        categoria, confianza, texto, paginas, extra = self.clasificar(pdf_path)
         datos = self.extraer_datos(paginas, texto, categoria)
         datos["categoria"] = categoria
         datos["confianza"] = confianza
+        datos.update(extra)
         return datos

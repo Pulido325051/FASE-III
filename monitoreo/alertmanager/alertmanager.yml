@@ -1,0 +1,22 @@
+route:
+  receiver: equipo-webhook
+  group_by: [alertname]
+  group_wait: 5s
+  group_interval: 15s
+  repeat_interval: 1h
+  routes:
+    - matchers: [severity="critical"]
+      receiver: equipo-webhook
+      repeat_interval: 10m
+
+receivers:
+  - name: equipo-webhook
+    webhook_configs:
+      - url: http://receptor:9099/alertas
+        send_resolved: true
+
+# Si la API esta caida, las alertas derivadas (latencia, errores, calidad) son ruido: se silencian
+inhibit_rules:
+  - source_matchers: [alertname="ApiCaida"]
+    target_matchers: [severity=~"warning|critical"]
+    equal: []

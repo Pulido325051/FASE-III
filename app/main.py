@@ -33,6 +33,7 @@ import shutil
 import tempfile
 import threading
 import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
@@ -44,6 +45,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import almacenamiento, reglas, respaldos
+from . import observabilidad as obs
 from .base_datos import BaseDatos, ErrorBaseDatos, categoria_de_tipo
 from .motor_ocr import NO_ENCONTRADA, NO_ENCONTRADO, MotorOCR, curp_valida, curp_verificada
 
@@ -104,8 +106,9 @@ CONFIG_BD = SimpleNamespace(
     tipos={c: SimpleNamespace(categoria=c, texto_bd=t, sufijo=s) for c, (t, s) in TIPOS.items()},
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+obs.configurar_logs()   # logs JSON (una linea por evento) con request_id, en lugar de texto plano
 log = logging.getLogger("api")
+FALLAS_HABILITADAS = os.getenv("FALLAS_HABILITADAS", "") == "1"   # inyeccion de fallas para simulaciones
 
 estado = {"motor": None, "bd": None, "inicio": time.time(), "procesados": 0}
 limite = threading.BoundedSemaphore(MAX_CONCURRENCIA)
@@ -122,7 +125,9 @@ async def ciclo_de_vida(app):
     # El modelo se carga una sola vez al arrancar el contenedor
     log.info("Cargando modelo: %s", MODELO_PATH)
     estado["motor"] = MotorOCR(MODELO_PATH, VECTORIZADOR_PATH, TESSERACT_CMD, POPPLER_PATH)
-    log.info("Modelo listo. Categorias: %s", estado["motor"].categorias)
+    sha = hashlib.md5(Path(MODELO_PATH).read_bytes()).hexdigest()[:8]
+    obs.fijar_modelo(os.getenv("MODELO_VERSION", "v1"), sha)
+    obs.evento("arranque_modelo", clases=len(estado["motor"].categorias), sha=sha)
     if CONFIG_BD.mysql_host:
         estado["bd"] = BaseDatos(CONFIG_BD)
         os.makedirs(CONFIG_BD.carpeta_expedientes, exist_ok=True)
@@ -173,6 +178,7 @@ class Resultado(BaseModel):
     nombre: Optional[str]
     fecha_nacimiento: Optional[str]
     segundos: float
+    margen: Optional[float] = None                # margen de decision del modelo (confianza)
     # Solo con base de datos:
     alumno: Optional[AlumnoOut] = None
     encontrado_por: Optional[str] = None          # "curp" | "nombre"
@@ -242,7 +248,7 @@ def _bd():
 
 # ---------------------------------------------------------------- usuarios y roles (opcional)
 # Hay tres usuarios fijos, uno por rol. Si ninguna contrasena esta definida, la web queda abierta (demo sin login).
-RUTAS_PUBLICAS = ("/", "/login", "/salud", "/api/login", "/api/logout", "/api/sesion", "/favicon.ico")
+RUTAS_PUBLICAS = ("/", "/login", "/salud", "/metrics", "/api/login", "/api/logout", "/api/sesion", "/favicon.ico")
 # Contrasenas de la DEMO (las mismas que trae docker-compose y el README). La pagina de entrada las muestra como ayuda
 # SOLO mientras un usuario siga usando exactamente esa contrasena: si se cambia en el .env, la ayuda desaparece sola.
 CLAVES_DEMO = {"administrador": "admin-2026", "operador": "operador-2026", "consultor": "consultor-2026"}
@@ -263,7 +269,7 @@ def clave_correcta(clave, esperada):
 
 def nivel_requerido(metodo, ruta):
     """Que permiso exige cada ruta: consultar (ver), capturar (subir/guardar/eliminar/corregir) o respaldar."""
-    if ruta.startswith("/respaldo"):
+    if ruta.startswith("/respaldo") or ruta.startswith("/admin"):
         return "respaldar"
     if metodo not in ("GET", "HEAD") or ruta.endswith("/destino"):
         return "capturar"
@@ -304,6 +310,38 @@ async def exigir_sesion(request: Request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def observar(request: Request, call_next):
+    """Observabilidad: request_id, metricas HTTP, traza por peticion y un log JSON por peticion (sin datos personales).
+    Se declara DESPUES de exigir_sesion para quedar por fuera y ver tambien los 401 y 403."""
+    ruta = request.url.path
+    if ruta == "/metrics":
+        return await call_next(request)            # no se mide la propia lectura de metricas
+    rid = uuid.uuid4().hex[:12]
+    obs.request_id.set(rid)
+    obs.iniciar_traza()
+    t0 = time.perf_counter()
+    codigo = 500
+    try:
+        respuesta = await call_next(request)
+        codigo = respuesta.status_code
+        respuesta.headers["X-Request-ID"] = rid
+        return respuesta
+    finally:
+        dur = time.perf_counter() - t0
+        ruta_n = obs.normalizar_ruta(ruta)
+        obs.http_total.labels(ruta_n, request.method, str(codigo)).inc()
+        obs.http_dur.labels(ruta_n).observe(dur)
+        s = _sesion(request)
+        rol = s["rol"] if s else "ninguno"
+        if codigo in (401, 403, 429) and ruta_n != "/api/login":
+            obs.acceso_denegado.labels(rol, str(codigo)).inc()
+            obs.evento("acceso_denegado", "WARNING", rol=rol, ruta=ruta_n, codigo=codigo)
+        if ruta_n in ("/clasificar", "/guardar"):      # una traza (con sus etapas) por documento
+            obs.evento("traza", ruta=ruta_n, codigo=codigo, duracion_ms=round(dur * 1000), etapas=obs.spans(),
+                       usuario=ROLES[s["rol"]]["nombre"] if s else None)
+
+
 class Login(BaseModel):
     usuario: str
     clave: str
@@ -320,13 +358,15 @@ def login(datos: Login, request: Request, response: Response):
     rol = datos.usuario.strip().lower()
     if rol not in CLAVES or not clave_correcta(datos.clave, CLAVES[rol]):
         intentos_fallidos[ip] = recientes + [time.time()]
-        log.warning("Acceso denegado desde %s", ip)
+        obs.login_total.labels("fallido").inc()
+        obs.evento("login_fallido", "WARNING", rol=rol if rol in ROLES else "desconocido")
         raise HTTPException(401, "Usuario o contrasena incorrectos.")
     intentos_fallidos.pop(ip, None)
+    obs.login_total.labels("ok").inc()
+    obs.evento("login_ok", rol=rol)
     token = secrets.token_urlsafe(32)
     sesiones[token] = {"rol": rol, "expira": time.time() + HORAS_SESION * 3600}
     response.set_cookie("sesion", token, httponly=True, samesite="strict", max_age=int(HORAS_SESION * 3600))
-    log.info("Entro %s (%s) desde %s", ROLES[rol]["nombre"], rol, ip)
     return _info_sesion(rol)
 
 
@@ -424,9 +464,13 @@ def clasificar(
         inicio = time.time()
         try:
             with limite:
-                datos = motor.procesar(ruta)
-        except Exception:
-            log.exception("Error procesando %s", archivo.filename)
+                obs.en_curso.inc()
+                try:
+                    datos = motor.procesar(ruta)
+                finally:
+                    obs.en_curso.dec()
+        except Exception as e:
+            obs.evento("clasificar_error", "ERROR", error=f"{type(e).__name__}")
             raise HTTPException(422, "No se pudo leer el PDF (puede estar danado o protegido con contrasena).")
         estado["procesados"] += 1
 
@@ -439,12 +483,21 @@ def clasificar(
             nombre=None if datos["nombre"] == NO_ENCONTRADO else datos["nombre"],
             fecha_nacimiento=None if datos["fecha"] == NO_ENCONTRADA else datos["fecha"],
             segundos=0,
+            margen=round(datos["margen"], 4),
         )
         if estado["bd"] is not None:
             _asociar(res, ruta, guardar)
         res.segundos = round(time.time() - inicio, 1)
-        log.info("Clasificado en %.1fs -> %s (alumno: %s)", res.segundos, res.tipo_documento,
-                 res.alumno.id if res.alumno else None)
+        # Observabilidad: metricas, evento para el monitor y log JSON (sin CURP, nombre ni texto)
+        por = res.encontrado_por or "ninguno"
+        obs.registrar_clasificacion(
+            clase=res.tipo_documento, margen_decision=datos["margen"], palabras=datos["palabras"],
+            cobertura_vocab=datos["cobertura"], curp_hallada=res.curp is not None, curp_ok=res.curp_verificada,
+            nombre_ok=res.nombre is not None, fecha_ok=res.fecha_nacimiento is not None,
+            pasadas_extra=datos.get("pasadas_extra", 0), segundos=time.time() - inicio, paginas=datos["paginas"], por=por)
+        obs.evento("clasificar_ok", clase=res.tipo_documento, margen=round(datos["margen"], 3),
+                   curp_verificada=res.curp_verificada, paginas=datos["paginas"], pasadas_extra=datos.get("pasadas_extra", 0),
+                   alumno_por=por, duracion_ms=round((time.time() - inicio) * 1000))
         return res
     finally:
         try:
@@ -619,6 +672,10 @@ def guardar(
             os.remove(ruta)
         except OSError:
             pass
+    obs.guardado.labels(modo).inc()
+    if modo == almacenamiento.REEMPLAZAR:
+        obs.retractacion.inc()      # reemplazar = la persona descarto el documento anterior
+    obs.evento("guardado", modo=modo, clase=categoria)
     return GuardadoOut(guardado_como=os.path.basename(destino_final))
 
 
@@ -650,6 +707,8 @@ def eliminar(request: Request, id_alumno: int, id_documento: int):
         almacenamiento.eliminar_documento(_bd(), CONFIG_BD, doc, alumno, usuario=_usuario(request))
     except (ErrorBaseDatos, almacenamiento.ErrorAlmacenamiento) as e:
         raise HTTPException(500, f"No se elimino: {e}")
+    obs.eliminado.inc()
+    obs.evento("eliminado")
     return JSONResponse({"eliminado": doc.nombre})
 
 
@@ -674,7 +733,54 @@ def corregir_curp(request: Request, id_alumno: int, datos: CorregirCurp):
         raise HTTPException(409, str(e))
     almacenamiento.registrar_cambio_curp(CONFIG_BD, alumno, anterior, nueva, usuario=_usuario(request))
     alumno.curp = nueva
+    obs.curp_corregida.inc()
+    obs.evento("curp_corregida")
     return _alumno_out(alumno)
+
+
+# ---------------------------------------------------------------- monitoreo
+@app.get("/metrics", include_in_schema=False)
+def metricas():
+    """Metricas Prometheus. Se actualizan las de estado (BD, disco, respaldo) justo al consultarlas."""
+    obs.bd_up.set(1 if estado["bd"] is not None else 0)
+    try:
+        carpeta = CONFIG_BD.carpeta_expedientes
+        if os.path.isdir(carpeta):
+            uso = shutil.disk_usage(carpeta)
+            obs.disco_libre.labels("expedientes").set(uso.free / uso.total)
+    except Exception:
+        pass
+    cuerpo, tipo = obs.exportar()
+    return Response(content=cuerpo, media_type=tipo)
+
+
+class Feedback(BaseModel):
+    de: str
+    a: str
+
+
+@app.post("/feedback/categoria", include_in_schema=False)
+def feedback_categoria(datos: Feedback):
+    """La persona cambio el tipo propuesto por el modelo: es la senal de error mas directa (sin datos personales)."""
+    if datos.de != datos.a:
+        obs.correccion.labels(datos.de[:40], datos.a[:40]).inc()
+        obs.registrar("correccion", de=datos.de[:40], a=datos.a[:40])
+        obs.evento("correccion_categoria", de=datos.de[:40], a=datos.a[:40])
+    return {"ok": True}
+
+
+class Fallas(BaseModel):
+    retardo_ocr_s: float = 0.0
+
+
+@app.post("/admin/fallas", include_in_schema=False)
+def fijar_fallas(datos: Fallas):
+    """Inyeccion de fallas para las simulaciones del plan de monitoreo. Desactivada salvo FALLAS_HABILITADAS=1."""
+    if not FALLAS_HABILITADAS:
+        raise HTTPException(404, "No disponible.")
+    obs.FALLAS["retardo_ocr_s"] = max(0.0, min(datos.retardo_ocr_s, 60.0))
+    obs.evento("falla_inyectada", "WARNING", retardo_ocr_s=obs.FALLAS["retardo_ocr_s"])
+    return obs.FALLAS
 
 
 # ---------------------------------------------------------------- respaldos
@@ -719,10 +825,13 @@ def _correr_trabajo(tipo):
             ruta, cantidad, no_leidos = respaldos.respaldar_archivos(CONFIG_BD, RESPALDOS_DIR, progreso, cancelado)
             trabajo["resultado"] = {"archivo": os.path.basename(ruta), "tamano": os.path.getsize(ruta),
                                     "archivos": cantidad, "no_leidos": no_leidos}
+        obs.respaldo_ultimo.set(time.time())
+        obs.evento("respaldo_ok", tipo=tipo)
     except respaldos.RespaldoCancelado:
         trabajo["error"] = "cancelado"
     except Exception as e:
         log.exception("Error en el respaldo")
+        obs.respaldo_fallos.inc()
         trabajo["error"] = str(e)
     finally:
         trabajo["activo"] = False
