@@ -76,3 +76,26 @@ def test_clasificar_registra_metricas_y_el_evento_no_lleva_datos_personales(clie
     assert datos["curp"] not in eventos and "EJEMPLO" not in eventos
     registro = json.loads(eventos.splitlines()[-1])
     assert {"margen", "palabras", "cobertura", "curp_verificada"} <= set(registro)
+
+
+def test_modo_seguro_marca_todo_documento_para_revision(cliente):
+    pdf = EJEMPLOS / "acta_nacimiento_ficticia.pdf"
+    archivo = {"archivo": (pdf.name, pdf.read_bytes(), "application/pdf")}
+    try:
+        assert cliente.post("/admin/modo-seguro", json={"activo": True, "razon": "prueba"}).json()["activo"] is True
+        r = cliente.post("/clasificar", files=archivo, data={"guardar": "false"}).json()
+        assert r["modo_seguro"] is True and r["aviso"].startswith("MODO SEGURO")
+        assert "expedientes_modo_seguro 1.0" in cliente.get("/metrics").text
+    finally:
+        cliente.post("/admin/modo-seguro", json={"activo": False})
+    r = cliente.post("/clasificar", files=archivo, data={"guardar": "false"}).json()
+    assert r["modo_seguro"] is False
+
+
+def test_modo_seguro_caduca_a_las_24_horas(cliente):
+    try:
+        cliente.post("/admin/modo-seguro", json={"activo": True, "razon": "prueba"})
+        main.MODO_SEGURO["desde"] -= 25 * 3600
+        assert cliente.get("/admin/modo-seguro").json()["activo"] is False
+    finally:
+        cliente.post("/admin/modo-seguro", json={"activo": False})

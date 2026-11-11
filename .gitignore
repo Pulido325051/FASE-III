@@ -20,3 +20,6 @@ expedientes/*
 
 # Datos personales de quien usa el proyecto: se quedan en su computadora
 db/init/03_mis_datos.sql
+
+# Registro generado por la respuesta automatizada
+monitoreo/acciones_automaticas.jsonl

@@ -109,6 +109,22 @@ CONFIG_BD = SimpleNamespace(
 obs.configurar_logs()   # logs JSON (una linea por evento) con request_id, en lugar de texto plano
 log = logging.getLogger("api")
 FALLAS_HABILITADAS = os.getenv("FALLAS_HABILITADAS", "") == "1"   # inyeccion de fallas para simulaciones
+# Modo seguro (respuesta automatizada R-A2): mientras esta activo, TODO documento leido pasa a "Revisar". Caduca solo a las 24 h
+# si nadie lo revalida (guarda del documento tecnico). Lo activa y desactiva el servicio de respuesta automatica por /admin/modo-seguro.
+MODO_SEGURO = {"activo": False, "desde": 0.0, "razon": "", "caduca_s": 24 * 3600}
+
+
+def _fijar_modo_seguro(activo, razon=""):
+    MODO_SEGURO.update(activo=bool(activo), desde=time.time() if activo else 0.0, razon=razon if activo else "")
+    obs.modo_seguro.set(1 if activo else 0)
+    obs.evento("modo_seguro", "WARNING" if activo else "INFO", activo=bool(activo), razon=razon)
+
+
+def _modo_seguro_activo():
+    if MODO_SEGURO["activo"] and time.time() - MODO_SEGURO["desde"] > MODO_SEGURO["caduca_s"]:
+        _fijar_modo_seguro(False, "caduco a las 24 h")
+    return MODO_SEGURO["activo"]
+
 
 estado = {"motor": None, "bd": None, "inicio": time.time(), "procesados": 0}
 limite = threading.BoundedSemaphore(MAX_CONCURRENCIA)
@@ -179,6 +195,7 @@ class Resultado(BaseModel):
     fecha_nacimiento: Optional[str]
     segundos: float
     margen: Optional[float] = None                # margen de decision del modelo (confianza)
+    modo_seguro: bool = False                     # True: el sistema esta en modo seguro, una persona debe revisar todo
     # Solo con base de datos:
     alumno: Optional[AlumnoOut] = None
     encontrado_por: Optional[str] = None          # "curp" | "nombre"
@@ -498,6 +515,9 @@ def clasificar(
         obs.evento("clasificar_ok", clase=res.tipo_documento, margen=round(datos["margen"], 3),
                    curp_verificada=res.curp_verificada, paginas=datos["paginas"], pasadas_extra=datos.get("pasadas_extra", 0),
                    alumno_por=por, duracion_ms=round((time.time() - inicio) * 1000))
+        if _modo_seguro_activo():
+            res.modo_seguro = True
+            res.aviso = "MODO SEGURO activo: revisa este documento a mano antes de guardarlo. " + (res.aviso or "")
         return res
     finally:
         try:
@@ -752,6 +772,23 @@ def metricas():
         pass
     cuerpo, tipo = obs.exportar()
     return Response(content=cuerpo, media_type=tipo)
+
+
+class CambioModoSeguro(BaseModel):
+    activo: bool
+    razon: str = ""
+
+
+@app.get("/admin/modo-seguro", include_in_schema=False)
+def estado_modo_seguro():
+    return {"activo": _modo_seguro_activo(), "razon": MODO_SEGURO["razon"], "desde": MODO_SEGURO["desde"]}
+
+
+@app.post("/admin/modo-seguro", include_in_schema=False)
+def cambiar_modo_seguro(datos: CambioModoSeguro):
+    """R-A2: lo usa el servicio de respuesta automatica (y el Administrador a mano). Solo el rol Administrador."""
+    _fijar_modo_seguro(datos.activo, datos.razon[:120])
+    return {"activo": MODO_SEGURO["activo"], "razon": MODO_SEGURO["razon"]}
 
 
 class Feedback(BaseModel):

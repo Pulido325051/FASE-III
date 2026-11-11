@@ -42,7 +42,7 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 | **Nuevo:** **respaldos** de la base de datos (.sql) y de los PDF (.zip) desde la pantalla; **login con 3 roles** (administrador, operador y consultor) con permisos distintos | |
 | Guardar, reemplazar, consultar y eliminar con papelera; todo en Docker con un solo comando | |
 | **Nuevo:** **monitoreo MLOps**: métricas, logs y trazas, MLflow, Prometheus, Grafana, alertas, runbooks y detección de *data drift* (sección 15) | |
-| 49 pruebas automáticas y esta guía | |
+| 51 pruebas automáticas y esta guía | |
 
 ### ⚡ Resumen para quien ya sabe Docker
 
@@ -50,7 +50,7 @@ cualquier computadora, sin instalar Python, el lector de texto (OCR) ni la base 
 git clone https://github.com/Pulido325051/FASE-III.git && cd FASE-III
 docker compose up --build        # primera vez: 5–15 min
 # abrir http://localhost:8000
-docker compose run --rm api pytest -v     # debe terminar con "49 passed"
+docker compose run --rm api pytest -v     # debe terminar con "51 passed"
 ```
 
 No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defecto.
@@ -434,7 +434,7 @@ luego reinicia con los dos comandos de arriba.
 
 ## 9. Comprobar que todo funciona (pruebas automáticas)
 
-El proyecto trae **49 pruebas automáticas** que revisan todo el sistema por ti.
+El proyecto trae **51 pruebas automáticas** que revisan todo el sistema por ti.
 
 En **Símbolo del sistema**, dentro de `C:\FASE-III`, escribe:
 
@@ -445,7 +445,7 @@ docker compose run --rm api pytest -v
 Espera menos de un minuto. Al final debe decir:
 
 ```
-49 passed
+51 passed
 ```
 
 Qué revisan las pruebas:
@@ -505,7 +505,7 @@ Las pruebas dejan la base de datos como estaba.
 | `db/` | La base de datos de prueba: estructura de las tablas y 100 alumnos **inventados** (ver sección 8) |
 | `expedientes/` | **Aquí se guardan los PDFs de los alumnos** al pulsar *Guardar en expediente* (ver sección 7). Su contenido no se sube a GitHub |
 | `ejemplos/` | Dos documentos PDF **inventados** para probar |
-| `tests/` | Las 49 pruebas automáticas |
+| `tests/` | Las 51 pruebas automáticas |
 | `monitoreo/` | Scripts y configuración del monitoreo: monitor de *data drift*, entrenamiento y registro en MLflow, runbooks, generador de tráfico, reglas de alerta, Alertmanager y dashboards de Grafana (sección 15) |
 | `docker-compose.monitoreo.yml` | Opcional: enciende, además del sistema, MLflow, Prometheus, Alertmanager, Grafana y el monitor |
 | `herramientas/` | `anonimizar_vectorizador.py`: quita datos personales del modelo antes de publicarlo (ver abajo) |
@@ -593,6 +593,8 @@ Es un proyecto aparte (puertos distintos y base de datos propia), así que puede
 |---|---|
 | `app/observabilidad.py` | Métricas (`/metrics`), logs JSON con identificador de petición, trazas por etapa (`pdf_a_imagen`, `ocr`, `clasificar`, `extraer`) y eventos **sin datos personales** (nunca CURP, nombre ni texto del documento) |
 | `monitoreo/entrenar_y_registrar.py` | Entrena el modelo, lo registra en MLflow (v1 producción, v2 candidato) y aplica **compuertas de calidad** antes de proponer una versión nueva |
+| `monitoreo/responder.py` | **Respuesta automatizada**: recibe las alertas y ejecuta sin intervención humana el reinicio de la API o de MySQL (con guarda de 3 reinicios en 10 min y escalamiento), el **modo seguro** (todo documento pasa a «Revisar»), el seguimiento de la alerta y el respaldo preventivo |
+| `monitoreo/incidentes_automaticos.py` | Provoca incidentes simulados (API caída, escaneos malos, base de datos detenida) y mide cómo responde `responder.py` |
 | `monitoreo/monitor.py` | Calcula el **data drift** (PSI de margen de decisión, palabras, cobertura del vocabulario y mezcla de clases) y las tasas de calidad; las publica a Prometheus y a MLflow |
 | `monitoreo/prometheus/reglas.yml` | **Configuración de las 9 alertas** (API caída, latencia, errores, quema del presupuesto, base de datos, baja confianza, deriva, correcciones, CURP) |
 | `monitoreo/alertmanager/alertmanager.yml` | Agrupación, **inhibición** (si la API cae no se avisa de lo demás) y envío al receptor |
@@ -614,6 +616,8 @@ pip install requests pillow                    # solo para los scripts que corre
 python monitoreo/generar_trafico.py normal 40        # tráfico normal (la referencia de deriva se fija con los primeros 30)
 python monitoreo/generar_trafico.py degradado 28     # escaneos malos -> alertas de deriva y baja confianza
 python monitoreo/runbooks.py INC-01                  # latencia alta + ejecución del runbook RB-02
+python monitoreo/responder.py                        # (otra terminal) respuesta automatizada: escucha en el puerto 9100
+python monitoreo/incidentes_automaticos.py API       # provoca una caída y mide cómo se recupera sola (también DERIVA y BD)
 python monitoreo/verificar_alertas.py
 ```
 
