@@ -310,6 +310,7 @@ const aviso = (titulo, texto) => confirmar(titulo, texto, [{txt: "Aceptar", valo
 // ------------------------------------------------------------------ evaluacion (igual que la app de escritorio)
 function evaluar(d) {
   const avisos = [], notas = [];
+  if (d.modoSeguro) avisos.push("MODO SEGURO activo: revisa este documento a mano antes de guardarlo.");
   if (!tipoValido(d.categoria)) avisos.push(`El tipo '${d.categoria}' no está configurado.`);
   if (d.confianza != null && d.confianza < 0.6) avisos.push(`Tipo dudoso (${Math.round(d.confianza * 100)}%): confirma el tipo de documento.`);
   if (hayBD) {
@@ -435,7 +436,7 @@ async function leer(d) {
     d.categoria = j.tipo_documento; d.confianza = j.confianza; d.propuesta = j.tipo_documento;
     d.curp = j.curp || ""; d.nombreOcr = j.nombre || ""; d.fecha = j.fecha_nacimiento || "";
     d.alumno = j.alumno || null; d.porNombre = j.encontrado_por === "nombre"; d.avisoBd = j.aviso_bd || "";
-    d.motivoNombre = j.motivo_revision_nombre ?? null;
+    d.motivoNombre = j.motivo_revision_nombre ?? null; d.modoSeguro = !!j.modo_seguro;
     d.yaCargados = d.alumno ? (j.documentos_del_mismo_tipo || []) : [];   // ¿el alumno ya tiene este documento?
     evaluar(d);
   } catch (e) {

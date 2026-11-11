@@ -73,6 +73,8 @@ respaldo_fallos = Counter(P + "respaldo_fallos_total", "Respaldos fallidos", reg
 login_total = Counter(P + "login_total", "Intentos de inicio de sesion", ["resultado"], registry=REG)
 acceso_denegado = Counter(P + "acceso_denegado_total", "Respuestas 401, 403 y 429", ["rol", "codigo"], registry=REG)
 
+modo_seguro = Gauge(P + "modo_seguro", "1 = modo seguro activo (todo documento pasa a revision humana)", registry=REG)
+
 estado_modelo = {"version": "v1", "sha": "desconocido"}
 FALLAS = {"retardo_ocr_s": 0.0}         # inyeccion de fallas para simulaciones (solo con FALLAS_HABILITADAS=1)
 
@@ -190,7 +192,7 @@ def registrar_clasificacion(clase, margen_decision, palabras, cobertura_vocab, c
 CONOCIDAS = {"/", "/login", "/salud", "/clasificar", "/guardar", "/alumnos", "/alumnos/por-curp/{curp}", "/alumnos/{id}/expediente",
              "/alumnos/{id}/destino", "/alumnos/{id}/curp", "/alumnos/{id}/expediente/{id}", "/alumnos/{id}/expediente/{id}/pdf",
              "/tipos", "/respaldo/bd", "/respaldo/archivos", "/respaldo/estado", "/respaldo/cancelar", "/respaldo/descargar/{nombre}",
-             "/api/login", "/api/logout", "/api/sesion", "/feedback/categoria", "/admin/fallas", "/docs", "/openapi.json"}
+             "/api/login", "/api/logout", "/api/sesion", "/feedback/categoria", "/admin/fallas", "/admin/modo-seguro", "/docs", "/openapi.json"}
 
 
 def normalizar_ruta(ruta):

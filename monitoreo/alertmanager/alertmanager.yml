@@ -14,6 +14,9 @@ receivers:
     webhook_configs:
       - url: http://receptor:9099/alertas
         send_resolved: true
+      # Respuesta automatizada (monitoreo/responder.py, corre en el equipo anfitrion con Docker)
+      - url: http://host.docker.internal:9100/alerta
+        send_resolved: true
 
 # Si la API esta caida, las alertas derivadas (latencia, errores, calidad) son ruido: se silencian
 inhibit_rules:

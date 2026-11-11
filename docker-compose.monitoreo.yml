@@ -97,6 +97,7 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.27.0
     volumes: ["./monitoreo/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"]
+    extra_hosts: ["host.docker.internal:host-gateway"]     # para llegar al servicio de respuesta automatizada del anfitrion
     ports: ["9093:9093"]
     mem_limit: 80m
 
