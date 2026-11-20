@@ -23,3 +23,6 @@ db/init/03_mis_datos.sql
 
 # Registro generado por la respuesta automatizada
 monitoreo/acciones_automaticas.jsonl
+
+# Resultado de fairness: se genera localmente con el dataset real (no se versiona)
+escalabilidad/resultados/fairness.json
