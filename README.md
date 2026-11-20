@@ -74,6 +74,7 @@ No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defe
 13. [Fase I (escritorio) frente a Fase III (web)](#13-fase-i-escritorio-frente-a-fase-iii-web)
 14. [Palabras que quizá no conozcas](#14-palabras-que-quizá-no-conozcas)
 15. [Monitoreo MLOps: MLflow, Prometheus y Grafana](#15-monitoreo-mlops-mlflow-prometheus-y-grafana)
+16. [Escalabilidad, costos y fairness](#16-escalabilidad-costos-y-fairness)
 
 ### 📄 Documentación de la Fase III
 
@@ -630,3 +631,14 @@ Las pruebas automáticas de esta parte están en `tests/test_observabilidad.py`.
 - La inyección de fallas (`/admin/fallas`) solo existe si se define `FALLAS_HABILITADAS=1` (únicamente en `docker-compose.monitoreo.yml`).
 - Se usó MLflow, y no Weights & Biases, para que los datos de los alumnos no salgan del equipo.
 - Las claves de este ejemplo son de **demostración** con datos ficticios; cámbialas si lo publicas.
+
+---
+
+## 16. Escalabilidad, costos y fairness
+
+Parte de la actividad de escalabilidad y gobernanza responsable. La carpeta [`escalabilidad/`](escalabilidad/) tiene los scripts que miden el
+rendimiento del servicio (latencia, documentos por minuto, CPU y memoria; escalado vertical y horizontal), evalúan el modelo por grupos
+(fairness) y dibujan el diagrama del sistema actual y del propuesto en la nube. Su [README](escalabilidad/README.md) explica cómo reproducirlo.
+
+Resultado principal: limitar los hilos de Tesseract (`OMP_THREAD_LIMIT=1`) multiplicó por ~10 los documentos por minuto en contenedores con la CPU limitada,
+con resultados idénticos. Está medido en contenedores locales con la CPU limitada, no en Cloud Run real.
