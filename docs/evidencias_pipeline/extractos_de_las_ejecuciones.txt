@@ -1,0 +1,27 @@
+EXTRACTOS DE LAS EJECUCIONES REALES DE LA CI (GitHub Actions)
+
+== Pruebas automaticas en Docker con MySQL y OCR (ejecucion 45210924946)
+======================== 51 passed, 1 warning in 22.22s ========================
+
+== Modelo: artefactos, pruebas de datos, entrenamiento y compuertas
+Artefactos del modelo: coinciden con el manifiesto
+======================== 10 passed, 2 skipped in 2.01s =========================
+Compuertas de calidad:
+  OK     exactitud: 1.0 (regla >= 0.95)
+  OK     f1_macro: 1.0 (regla >= 0.95)
+  OK     f1_peor_clase: 1.0 (regla >= 0.9)
+  OK     baja_confianza: 0.0111 (regla <= 0.1)
+  OK     latencia_prediccion_ms: 0.0017 (regla <= 5.0)
+MLflow: run bb1a9b7734354eaf9a7232badf372fbc, version 1, alias candidato=si
+RESULTADO: APROBADO: el modelo cumple todas las compuertas
+^[[36;1m  grep -E "Compuertas|OK |FALLA|RESULTADO|MLflow" entrenamiento.txt || true^[[0m
+
+== Imagen: prueba de humo
+salud ok
+
+== Ejecucion con compuerta imposible (rama demo/falla-compuertas, ejecucion 45211380475): el pipeline se detiene
+E       assert 0.9737 >= 1.01
+RESULTADO: RECHAZADO: no cumple las compuertas
+FAILED pipeline/tests/test_pipeline.py::test_las_metricas_de_referencia_cumplen_las_compuertas - assert 0.9737 >= 1.01
+FAILED pipeline/tests/test_pipeline.py::test_el_pipeline_aprueba_un_modelo_bueno_y_deja_su_manifiesto - AssertionError: assert 1 == 0
+^[[36;1m  grep -E "Compuertas|OK |FALLA|RESULTADO|MLflow" entrenamiento.txt || true^[[0m

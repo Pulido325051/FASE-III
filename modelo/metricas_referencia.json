@@ -1,0 +1,20 @@
+{
+  "descripcion": "Metricas de referencia del modelo desplegado (configuracion de produccion, division estratificada 80/20 con semilla 42)",
+  "fuente": "MLflow: experimento clasificador-expedientes, run v1-produccion (monitoreo/entrenar_y_registrar.py)",
+  "version": "v1",
+  "documentos_entrenamiento": 3338,
+  "documentos_prueba": 835,
+  "exactitud": 0.9832,
+  "f1_macro": 0.9832,
+  "f1_por_clase": {
+    "Actas de nacimiento": 0.989,
+    "CURP": 0.9964,
+    "Certificado Final": 0.9821,
+    "Certificado Parcial": 0.9635,
+    "Certificados Secundaria": 0.9929,
+    "Equivalencia": 0.9753
+  },
+  "margen_p5": 1.478,
+  "baja_confianza": 0.0335,
+  "latencia_prediccion_ms": 0.0012
+}

@@ -26,3 +26,4 @@ monitoreo/acciones_automaticas.jsonl
 
 # Resultado de fairness: se genera localmente con el dataset real (no se versiona)
 escalabilidad/resultados/fairness.json
+despliegue/historial.jsonl

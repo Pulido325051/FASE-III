@@ -9,7 +9,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PORT=8000
+    PORT=8000 \
+    OMP_THREAD_LIMIT=1
+# OMP_THREAD_LIMIT=1: Tesseract usa un hilo por lectura. Con la CPU limitada del contenedor (nube) los hilos extra se estorban:
+# medido, 1 CPU pasa de 3,7 a 40 documentos por minuto con resultados identicos (ver escalabilidad/).
 
 # Dependencias del sistema: OCR (Tesseract con idiomas) y Poppler (PDF -> imagen)
 RUN apt-get update \
