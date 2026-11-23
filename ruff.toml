@@ -1,0 +1,10 @@
+# Analisis estatico del codigo (CI): errores reales, no estilo
+line-length = 160
+target-version = "py311"
+
+[lint]
+select = ["E9", "F", "B006", "S102", "S307", "S602"]
+ignore = ["F401"]
+
+[lint.per-file-ignores]
+"tests/*" = ["F811", "F841"]

@@ -1,0 +1,143 @@
+# INTEGRACION CONTINUA: se ejecuta en cada push y pull request a main (y la reutiliza el flujo de publicacion).
+#   1. analisis-estatico  -> ruff: errores reales de codigo
+#   2. pruebas            -> las pruebas automaticas dentro de Docker, con MySQL y OCR reales (mismo entorno que produccion)
+#   3. modelo             -> pruebas de DATOS, entrenamiento con compuertas de calidad, MLflow y artefactos versionados
+#   4. imagen             -> construye la imagen, la prueba (humo) y la escanea en busca de vulnerabilidades
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analisis-estatico:
+    name: Análisis estático (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff==0.8.6
+      - run: ruff check app tests monitoreo pipeline escalabilidad herramientas db
+
+  pruebas:
+    name: Pruebas automáticas (Docker + MySQL + OCR)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir la imagen del sistema
+        run: docker compose build api
+      - name: Encender la base de datos de prueba
+        run: docker compose up -d --wait db
+      - name: Ejecutar las pruebas
+        run: |
+          mkdir -p reportes && chmod 777 reportes
+          docker compose run --rm --no-deps -v "$PWD/reportes:/reportes" api pytest -v --junitxml=/reportes/pruebas.xml
+      - name: Resumen de resultados
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET, os
+          ruta = "reportes/pruebas.xml"
+          if os.path.exists(ruta):
+              s = ET.parse(ruta).getroot()
+              s = s if s.tag == "testsuite" else s[0]
+              print(f"### Pruebas automáticas\n\n| Total | Fallidas | Errores | Omitidas | Tiempo |\n|---|---|---|---|---|\n| {s.get('tests')} | {s.get('failures')} | {s.get('errors')} | {s.get('skipped')} | {float(s.get('time')):.0f} s |")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reporte-de-pruebas
+          path: reportes/
+      - name: Apagar
+        if: always()
+        run: docker compose down -v
+
+  modelo:
+    name: Modelo (datos, entrenamiento y compuertas)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            pipeline/requirements-pipeline.txt
+      - run: pip install -r requirements-dev.txt -r pipeline/requirements-pipeline.txt
+      - name: Verificar los artefactos del modelo versionado
+        run: python pipeline/manifiesto.py --verificar
+      - name: Pruebas de datos y artefactos (huellas, privacidad, compuertas, datos semilla y el propio pipeline)
+        run: python -m pytest pipeline/tests -v
+      - name: Generar datos sintéticos (el dataset real no se sube a GitHub)
+        run: python pipeline/datos_demo.py --salida datos_demo.csv
+      - name: Pruebas de datos
+        run: python pipeline/validar_datos.py datos_demo.csv
+      - name: Entrenar, evaluar con compuertas y registrar en MLflow
+        env:
+          MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+        shell: bash          # con pipefail: si el entrenamiento falla (compuertas), el paso falla aunque pase por tee
+        run: python pipeline/entrenar.py --datos datos_demo.csv --salida artefactos --version "ci-${GITHUB_RUN_NUMBER}" | tee entrenamiento.txt
+      - name: Resumen
+        if: always()
+        run: |
+          {
+            echo '### Entrenamiento y compuertas de calidad'
+            echo '```'
+            grep -E "Compuertas|OK |FALLA|RESULTADO|MLflow" entrenamiento.txt || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: artefactos-del-modelo
+          path: |
+            artefactos/
+            mlflow.db
+            entrenamiento.txt
+
+  imagen:
+    name: Imagen Docker (construcción, humo y vulnerabilidades)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Construir la imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: fase3:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Prueba de humo (el contenedor arranca y clasifica un documento)
+        run: |
+          docker run -d --name humo -p 8000:8000 fase3:ci
+          for i in $(seq 1 40); do curl -sf localhost:8000/salud >/dev/null && break; sleep 2; done
+          curl -sf localhost:8000/salud | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['modelo_cargado'], d; print('salud ok')"
+          curl -sf -F "archivo=@ejemplos/acta_nacimiento_ficticia.pdf" -F guardar=false localhost:8000/clasificar | tee clasificacion.json
+          python3 -c "import json; d=json.load(open('clasificacion.json')); assert d['tipo_documento']=='Actas de nacimiento' and d['curp_verificada'], d; print('clasificacion ok')"
+      - name: Escaneo de vulnerabilidades (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: fase3:ci
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"        # informativo: se revisa en el resumen; se puede endurecer a "1"
+      - name: Limpiar
+        if: always()
+        run: docker rm -f humo || true

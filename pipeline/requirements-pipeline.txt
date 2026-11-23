@@ -1,0 +1,8 @@
+# Dependencias del pipeline de entrenamiento (CI). Versiones fijas: el modelo debe entrenarse y cargarse con la misma version de scikit-learn.
+scikit-learn==1.9.1
+numpy==2.3.5
+scipy==1.17.1
+joblib==1.6.0
+pandas==2.3.3
+mlflow==2.16.2
+sqlalchemy<2.1
