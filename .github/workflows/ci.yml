@@ -39,6 +39,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Construir la imagen del sistema
         run: docker compose build api
+      - name: Permisos de la carpeta de expedientes (el contenedor corre con un usuario sin privilegios)
+        run: chmod -R a+rwx expedientes
       - name: Encender la base de datos de prueba
         run: docker compose up -d --wait db
       - name: Ejecutar las pruebas
@@ -131,7 +133,7 @@ jobs:
           curl -sf -F "archivo=@ejemplos/acta_nacimiento_ficticia.pdf" -F guardar=false localhost:8000/clasificar | tee clasificacion.json
           python3 -c "import json; d=json.load(open('clasificacion.json')); assert d['tipo_documento']=='Actas de nacimiento' and d['curp_verificada'], d; print('clasificacion ok')"
       - name: Escaneo de vulnerabilidades (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: fase3:ci
           format: table
