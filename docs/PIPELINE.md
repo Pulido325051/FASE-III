@@ -84,7 +84,7 @@ python despliegue/reconciliar.py --entorno staging --forzar --simular-falla    #
 
 ## 5. Limitaciones
 
-- El despliegue es **simulado** (contenedores efímeros en el ejecutor); no hay un entorno de nube contratado.
+- El despliegue es **simulado** (contenedores efímeros en el ejecutor, con la imagen real publicada en GHCR); no hay un entorno de nube contratado.
 - El entrenamiento en CI usa datos **sintéticos**, casi perfectamente separables: sirven para probar el pipeline, no para medir la calidad real del modelo (la referencia real está en `modelo/metricas_referencia.json`, con exactitud 0,974).
 - La aprobación manual de `produccion` y la protección de la rama `main` se configuran en *Settings* del repositorio; aquí quedan documentadas como siguiente paso.
 - Las vulnerabilidades se reportan pero no bloquean la publicación.
@@ -101,4 +101,9 @@ Carpeta [`docs/evidencias_pipeline/`](evidencias_pipeline/) y la pestaña *Actio
 | `04_CI_ejecucion_con_falla_de_compuerta.png` | **Caso negativo:** con una compuerta imposible (exactitud ≥ 1,01) el pipeline se detiene |
 | `05_CI_primera_ejecucion_con_errores.png` | Primera ejecución: la CI encontró dos problemas reales (permisos de la carpeta de expedientes en el ejecutor y una versión inexistente de una acción), corregidos en el mismo PR |
 | `extractos_de_las_ejecuciones.txt` | Líneas clave de los registros: 51 pruebas aprobadas, compuertas de calidad, MLflow, prueba de humo y el caso negativo |
+| `06_Release_v1.0.0_ejecucion_completa.png` | La etiqueta `v1.0.0` ejecutó la CI, publicó la imagen y desplegó a staging: 6 trabajos en verde |
+| `07_Release_v1.0.0_en_GitHub.png` | La Release con el manifiesto del modelo y las métricas de referencia como archivos adjuntos |
+| `09_Imagen_publicada_en_GHCR.png` | La imagen publicada con etiquetas `1.0.0`, `1.0`, `latest` y `sha-de6da6a` |
+| `08_Despliegue_con_reversion_automatica.png` | Despliegue desde la imagen publicada y **reversión automática** ante una falla simulada; el servicio sigue sano |
+| `10_Repositorio_con_el_pipeline.png`, `11_Actions_lista_de_ejecuciones_final.png` | Estado final del repositorio y del historial de ejecuciones |
 | `despliegue_local_historial.jsonl` | Despliegue, ejecución idempotente y **reversión automática** ante una falla simulada (ejecutado en Docker local) |

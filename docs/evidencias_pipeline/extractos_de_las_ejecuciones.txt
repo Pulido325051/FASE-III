@@ -25,3 +25,25 @@ RESULTADO: RECHAZADO: no cumple las compuertas
 FAILED pipeline/tests/test_pipeline.py::test_las_metricas_de_referencia_cumplen_las_compuertas - assert 0.9737 >= 1.01
 FAILED pipeline/tests/test_pipeline.py::test_el_pipeline_aprueba_un_modelo_bueno_y_deja_su_manifiesto - AssertionError: assert 1 == 0
 ^[[36;1m  grep -E "Compuertas|OK |FALLA|RESULTADO|MLflow" entrenamiento.txt || true^[[0m
+
+== Publicacion de la version v1.0.0 (ejecucion 45215380232): imagen en GHCR
+        "ghcr.io/pulido325051/fase-iii:latest"
+        "ghcr.io/pulido325051/fase-iii:latest",
+        "ghcr.io/pulido325051/fase-iii:sha-de6da6a",
+    "ghcr.io/pulido325051/fase-iii:latest"
+
+== Despliegue continuo a staging desde la imagen publicada
+{"ts": "2026-11-23T16:23:43+00:00", "evento": "lectura", "entorno": "staging", "deseado": "ghcr.io/pulido325051/fase-iii:1.0.0", "actual": null}
+{"ts": "2026-11-23T16:23:43+00:00", "evento": "despliegue_inicio", "entorno": "staging", "de": null, "a": "ghcr.io/pulido325051/fase-iii:1.0.0"}
+{"ts": "2026-11-23T16:23:55+00:00", "evento": "prueba_de_humo", "entorno": "staging", "ok": true, "detalle": "tipo=Actas de nacimiento curp_verificada=True"}
+{"ts": "2026-11-23T16:23:55+00:00", "evento": "desplegado", "entorno": "staging", "version": "1.0.0", "imagen": "ghcr.io/pulido325051/fase-iii:1.0.0"}
+^[[36;1mcurl -sf "localhost:${PUERTO}/salud" | python3 -c "import sys,json; d=json.load(sys.stdin); print('estado:', d['estado'], '| modelo cargado:', d['modelo_cargado'])"^[[0m
+estado: ok | modelo cargado: True
+
+== Despliegue con falla simulada: reversion automatica (ejecucion 45216285016)
+{"ts": "2026-11-23T16:25:39+00:00", "evento": "prueba_de_humo", "entorno": "staging", "ok": true, "detalle": "tipo=Actas de nacimiento curp_verificada=True"}
+{"ts": "2026-11-23T16:25:52+00:00", "evento": "prueba_de_humo", "entorno": "staging", "ok": false, "detalle": "falla simulada para demostrar la reversion"}
+{"ts": "2026-11-23T16:25:52+00:00", "evento": "falla", "entorno": "staging", "detalle": "fallo la prueba de humo: falla simulada para demostrar la reversion"}
+{"ts": "2026-11-23T16:25:55+00:00", "evento": "reversion", "entorno": "staging", "a": "ghcr.io/pulido325051/fase-iii:1.0.0", "sano": true}
+^[[36;1mcurl -sf "localhost:${PUERTO}/salud" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['modelo_cargado']; print('el servicio sigue sano tras la reversión')"^[[0m
+el servicio sigue sano tras la reversión
