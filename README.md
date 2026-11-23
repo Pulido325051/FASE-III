@@ -4,6 +4,8 @@
 > de datos **de prueba** (datos inventados). Lo nuevo frente a la Fase II está resumido en
 > [`docs/NOVEDADES_FASE_III.md`](docs/NOVEDADES_FASE_III.md) y, más abajo, en [Estado de esta fase](#estado-de-esta-fase).
 
+> 📁 **Portafolio técnico-estratégico:** el problema, el valor de negocio, el stack, los resultados y las evidencias visuales en un solo lugar → [`docs/PORTAFOLIO.md`](docs/PORTAFOLIO.md)
+
 > **¿Por qué se llama «FASE III»?** Este repositorio no es una entrega congelada: es el proyecto **en evolución**. Lo sigo analizando y
 > actualizando con lo que me parece conveniente para convertirlo en un sistema **profesional**, y con las necesidades y observaciones que
 > me han hecho mis compañeras de **Control Escolar**, que son quienes lo usarían. Por eso cada mejora (roles, respaldos, duplicados,
