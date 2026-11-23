@@ -1,0 +1,70 @@
+# DESPLIEGUE CONTINUO (GitOps): el estado deseado vive en Git (despliegue/estado-deseado.yml). Este flujo reconcilia el entorno con
+# ese estado: despliega la version declarada, hace una prueba de humo y, si falla, REVIERTE a la version anterior.
+# Los entornos "staging" y "produccion" se simulan en el ejecutor de GitHub (contenedores efimeros). Para un entorno real basta cambiar el
+# destino del script (por ejemplo, Cloud Run) sin tocar el resto del flujo. "produccion" puede exigir aprobacion manual (Settings > Environments).
+name: Desplegar
+
+on:
+  workflow_call:
+    inputs:
+      entorno:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      entorno:
+        description: Entorno
+        type: choice
+        options: [staging, produccion]
+        default: staging
+      simular_falla:
+        description: Simular una falla en el despliegue para demostrar la reversión
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  desplegar:
+    name: Reconciliar ${{ inputs.entorno }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.entorno }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pyyaml requests
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Estado deseado en Git
+        run: cat despliegue/estado-deseado.yml
+      - name: Reconciliar el entorno con el estado deseado
+        run: python despliegue/reconciliar.py --entorno "${{ inputs.entorno }}"
+      - name: Verificar el servicio desplegado
+        run: |
+          PUERTO=$(python3 -c "import yaml; print(yaml.safe_load(open('despliegue/estado-deseado.yml'))['entornos']['${{ inputs.entorno }}']['puerto'])")
+          curl -sf "localhost:${PUERTO}/salud" | python3 -c "import sys,json; d=json.load(sys.stdin); print('estado:', d['estado'], '| modelo cargado:', d['modelo_cargado'])"
+      - name: Simular una falla de despliegue (demostración de la reversión)
+        if: ${{ inputs.simular_falla }}
+        continue-on-error: true
+        run: python despliegue/reconciliar.py --entorno "${{ inputs.entorno }}" --forzar --simular-falla
+      - name: Comprobar que tras la reversión el servicio sigue sano
+        if: ${{ inputs.simular_falla }}
+        run: |
+          PUERTO=$(python3 -c "import yaml; print(yaml.safe_load(open('despliegue/estado-deseado.yml'))['entornos']['${{ inputs.entorno }}']['puerto'])")
+          curl -sf "localhost:${PUERTO}/salud" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['modelo_cargado']; print('el servicio sigue sano tras la reversión')"
+      - name: Resumen del despliegue
+        if: always()
+        run: |
+          {
+            echo "### Despliegue a ${{ inputs.entorno }}"
+            echo '```json'
+            cat despliegue/historial.jsonl 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

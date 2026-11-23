@@ -1,0 +1,10 @@
+# ESTADO DESEADO (GitOps). Lo que debe estar corriendo en cada entorno.
+# Se cambia SOLO con un pull request (queda revisado y con historial); el flujo "Desplegar" reconcilia el entorno con este archivo.
+imagen: ghcr.io/pulido325051/fase-iii
+entornos:
+  staging:
+    version: "1.0.0"
+    puerto: 18100
+  produccion:
+    version: "1.0.0"
+    puerto: 18000

@@ -1,0 +1,25 @@
+{
+ "modelo": "clasificador-documentos",
+ "version": "v1",
+ "generado": "2026-11-23",
+ "scikit_learn": "1.9.1",
+ "clases": [
+  "Actas de nacimiento",
+  "CURP",
+  "Certificado Final",
+  "Certificado Parcial",
+  "Certificados Secundaria",
+  "Equivalencia"
+ ],
+ "artefactos": {
+  "modelo_clasificador.pkl": "b82651e975fa2e5751ca17da0f8c2db99888566c161a0d2b6c0a1872d3d5d621",
+  "vectorizador.pkl": "ac8341f89d1765737fed693b269bc9ef10a43b1598044e2375093b8fa02ff623"
+ },
+ "metricas_referencia": {
+  "exactitud": 0.9832,
+  "f1_macro": 0.9832,
+  "margen_p5": 1.478,
+  "baja_confianza": 0.0335,
+  "latencia_prediccion_ms": 0.0012
+ }
+}

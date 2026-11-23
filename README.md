@@ -75,6 +75,7 @@ No hace falta crear ningún archivo `.env`: trae contraseñas de prueba por defe
 14. [Palabras que quizá no conozcas](#14-palabras-que-quizá-no-conozcas)
 15. [Monitoreo MLOps: MLflow, Prometheus y Grafana](#15-monitoreo-mlops-mlflow-prometheus-y-grafana)
 16. [Escalabilidad, costos y fairness](#16-escalabilidad-costos-y-fairness)
+17. [Pipeline de IA: CI/CD, MLOps y GitOps](#17-pipeline-de-ia-cicd-mlops-y-gitops)
 
 ### 📄 Documentación de la Fase III
 
@@ -642,3 +643,15 @@ rendimiento del servicio (latencia, documentos por minuto, CPU y memoria; escala
 
 Resultado principal: limitar los hilos de Tesseract (`OMP_THREAD_LIMIT=1`) multiplicó por ~10 los documentos por minuto en contenedores con la CPU limitada,
 con resultados idénticos. Está medido en contenedores locales con la CPU limitada, no en Cloud Run real.
+
+---
+
+## 17. Pipeline de IA: CI/CD, MLOps y GitOps
+
+Cada cambio pasa por un pipeline automatizado en **GitHub Actions** (pestaña *Actions*): análisis estático, las pruebas dentro de Docker con
+MySQL y OCR reales, pruebas de datos y de artefactos del modelo, entrenamiento con **compuertas de calidad** (un modelo peor no avanza),
+construcción y escaneo de la imagen, y, al crear una etiqueta `vX.Y.Z`, publicación versionada de la imagen y despliegue continuo estilo
+**GitOps** (el estado deseado vive en `despliegue/estado-deseado.yml`; prueba de humo y reversión automática).
+
+Todo está explicado, con las decisiones técnicas justificadas y las evidencias, en [`docs/PIPELINE.md`](docs/PIPELINE.md).
+Carpetas: `.github/workflows/` (flujos), `pipeline/` (datos, entrenamiento, compuertas y manifiesto), `despliegue/` (estado deseado y reconciliación).
