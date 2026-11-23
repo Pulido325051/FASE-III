@@ -133,13 +133,15 @@ jobs:
           curl -sf -F "archivo=@ejemplos/acta_nacimiento_ficticia.pdf" -F guardar=false localhost:8000/clasificar | tee clasificacion.json
           python3 -c "import json; d=json.load(open('clasificacion.json')); assert d['tipo_documento']=='Actas de nacimiento' and d['curp_verificada'], d; print('clasificacion ok')"
       - name: Escaneo de vulnerabilidades (Trivy)
-        uses: aquasecurity/trivy-action@v0.33.1
-        with:
-          image-ref: fase3:ci
-          format: table
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "0"        # informativo: se revisa en el resumen; se puede endurecer a "1"
+        # Informativo (exit-code 0): se revisa en el resumen; se puede endurecer a --exit-code 1 para bloquear la publicacion
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 image             --severity CRITICAL,HIGH --ignore-unfixed --exit-code 0 --no-progress fase3:ci | tee trivy.txt
+          {
+            echo '### Escaneo de vulnerabilidades (Trivy)'
+            echo '```'
+            grep -E "Total:|Report Summary|fase3:ci" trivy.txt | head -20 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Limpiar
         if: always()
         run: docker rm -f humo || true
