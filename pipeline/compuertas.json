@@ -1,6 +1,6 @@
 {
   "descripcion": "Compuertas de calidad: un modelo candidato solo avanza en el pipeline si las cumple todas",
-  "exactitud_min": 0.95,
+  "exactitud_min": 1.01,
   "f1_macro_min": 0.95,
   "f1_por_clase_min": 0.90,
   "baja_confianza_max": 0.10,
