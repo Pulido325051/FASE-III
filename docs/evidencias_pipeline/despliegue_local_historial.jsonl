@@ -1,0 +1,11 @@
+{"ts": "2026-11-23T15:46:24+00:00", "evento": "lectura", "entorno": "staging", "deseado": "clasificador-documentos:fase3-mon", "actual": null}
+{"ts": "2026-11-23T15:46:24+00:00", "evento": "despliegue_inicio", "entorno": "staging", "de": null, "a": "clasificador-documentos:fase3-mon"}
+{"ts": "2026-11-23T15:46:34+00:00", "evento": "prueba_de_humo", "entorno": "staging", "ok": true, "detalle": "tipo=Actas de nacimiento curp_verificada=True"}
+{"ts": "2026-11-23T15:46:34+00:00", "evento": "desplegado", "entorno": "staging", "version": "1.0.0", "imagen": "clasificador-documentos:fase3-mon"}
+{"ts": "2026-11-23T15:46:35+00:00", "evento": "lectura", "entorno": "staging", "deseado": "clasificador-documentos:fase3-mon", "actual": "clasificador-documentos:fase3-mon"}
+{"ts": "2026-11-23T15:46:35+00:00", "evento": "sin_cambios", "entorno": "staging", "version": "1.0.0", "detalle": "el entorno ya coincide con el estado deseado"}
+{"ts": "2026-11-23T15:46:35+00:00", "evento": "lectura", "entorno": "staging", "deseado": "clasificador-documentos:fase3-mon", "actual": "clasificador-documentos:fase3-mon"}
+{"ts": "2026-11-23T15:46:35+00:00", "evento": "despliegue_inicio", "entorno": "staging", "de": "clasificador-documentos:fase3-mon", "a": "clasificador-documentos:fase3-mon"}
+{"ts": "2026-11-23T15:46:41+00:00", "evento": "prueba_de_humo", "entorno": "staging", "ok": false, "detalle": "falla simulada para demostrar la reversion"}
+{"ts": "2026-11-23T15:46:41+00:00", "evento": "falla", "entorno": "staging", "detalle": "fallo la prueba de humo: falla simulada para demostrar la reversion"}
+{"ts": "2026-11-23T15:46:44+00:00", "evento": "reversion", "entorno": "staging", "a": "clasificador-documentos:fase3-mon", "sano": true}

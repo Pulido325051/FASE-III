@@ -91,4 +91,14 @@ python despliegue/reconciliar.py --entorno staging --forzar --simular-falla    #
 
 ## 6. Evidencias
 
-Ver `docs/evidencias_pipeline/` (capturas y registros de las ejecuciones) y la pestaña *Actions* del repositorio.
+Carpeta [`docs/evidencias_pipeline/`](evidencias_pipeline/) y la pestaña *Actions* del repositorio.
+
+| Evidencia | Qué demuestra |
+|---|---|
+| `01_Actions_lista_de_ejecuciones.png` | Historial de ejecuciones del pipeline |
+| `02_PR_con_verificaciones_en_verde.png` | El pull request con las 4 verificaciones de la CI aprobadas |
+| `03_CI_ejecucion_exitosa_resumen.png` | Ejecución completa en verde: 4 trabajos y 3 artefactos (reporte de pruebas, artefactos del modelo, imagen) |
+| `04_CI_ejecucion_con_falla_de_compuerta.png` | **Caso negativo:** con una compuerta imposible (exactitud ≥ 1,01) el pipeline se detiene |
+| `05_CI_primera_ejecucion_con_errores.png` | Primera ejecución: la CI encontró dos problemas reales (permisos de la carpeta de expedientes en el ejecutor y una versión inexistente de una acción), corregidos en el mismo PR |
+| `extractos_de_las_ejecuciones.txt` | Líneas clave de los registros: 51 pruebas aprobadas, compuertas de calidad, MLflow, prueba de humo y el caso negativo |
+| `despliegue_local_historial.jsonl` | Despliegue, ejecución idempotente y **reversión automática** ante una falla simulada (ejecutado en Docker local) |
