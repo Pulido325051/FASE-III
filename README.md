@@ -657,3 +657,47 @@ construcción y escaneo de la imagen, y, al crear una etiqueta `vX.Y.Z`, publica
 
 Todo está explicado, con las decisiones técnicas justificadas y las evidencias, en [`docs/PIPELINE.md`](docs/PIPELINE.md).
 Carpetas: `.github/workflows/` (flujos), `pipeline/` (datos, entrenamiento, compuertas y manifiesto), `despliegue/` (estado deseado y reconciliación).
+
+---
+
+## 18. Un proyecto vivo: nuevo formato de certificados (noviembre 2026)
+
+Este sistema no se quedó en una entrega: lo usa Control Escolar, y cuando la institución cambió el formato de los certificados finales, el modelo tuvo que adaptarse.
+Es el caso real para el que se construyó el pipeline de MLOps de la sección anterior.
+
+**Qué pasó.** Llegó un lote de 1 159 certificados finales con un formato nuevo (todos en PDF).
+
+**Qué se midió antes de tocar nada.** Se leyó una muestra de 20 PDF (10 de cada variante de nombre de archivo) y se clasificó con el modelo en producción:
+
+| Muestra | Acierto como «Certificado Final» | Documentos en duda (margen < 1,2) |
+|---|---|---|
+| 20 PDF del formato nuevo | 0 de 20 | 20 de 20 |
+
+El OCR leyó bien el texto (≈ 1 100 palabras por documento): el modelo simplemente nunca había visto ese formato. Aun así **falló de forma segura**: los 20 quedaron
+por debajo del umbral de duda, así que habrían ido a revisión humana en lugar de archivarse mal en silencio.
+
+**Decisión.** *Sumar* los certificados nuevos a los 4 173 documentos de entrenamiento y reentrenar desde cero, no reemplazarlos: el modelo debe seguir reconociendo
+el formato anterior, que se seguirá subiendo. Antes de empezar se respaldó el modelo vigente con sus huellas sha256 (la versión v1 también sigue en MLflow con el alias `produccion`).
+
+**Cómo se decide si el modelo nuevo entra.** Pasa por las mismas compuertas de calidad y, además, se mide por separado el formato anterior y el nuevo: el modelo nuevo solo
+se promueve si el formato nuevo mejora y el anterior no empeora (ni las otras cinco clases).
+
+**Resultado del reentrenamiento** (4 265 documentos de entrenamiento: 3 338 del formato anterior + 927 del nuevo; el corte de prueba del formato anterior es el mismo del entrenamiento original):
+
+| Conjunto de prueba | Modelo anterior | Modelo nuevo |
+|---|---|---|
+| Formato anterior (835 documentos) | 97,37 % | **97,25 %** (1 documento de diferencia) |
+| Formato nuevo (232 documentos) | 0 % (todos en duda) | **100 %** |
+| Todo junto (1 067 documentos) | 76,2 % | **97,8 %** (F1 macro 0,976) |
+| Documentos en duda, todo junto | 25,5 % | **3,4 %** |
+
+El F1 de «Certificado Final» pasó de 0,52 a 0,99 y el de «Certificados Secundaria» de 0,61 a 0,99; el resto de las clases quedó igual o casi igual. Cumple las compuertas de calidad.
+
+**Una prueba automática evitó una fuga de datos.** El primer modelo candidato tenía mejores cifras, pero la prueba de artefactos (`test_el_vocabulario_no_contiene_datos_personales`) falló: el vocabulario
+había incorporado 31 números largos de los certificados nuevos (folios). El modelo se publica con el repositorio, así que se reentrenó excluyendo del vocabulario las palabras con 8 o más dígitos seguidos.
+Costó 0,12 puntos de exactitud en el formato anterior y dejó el vocabulario sin números largos.
+
+**Limitación honesta:** el 100 % en el formato nuevo se midió con documentos del mismo lote, que son casi idénticos entre sí; es una señal buena pero no garantiza que otro formato distinto funcione igual. Por eso el siguiente
+formato nuevo repetirá el mismo ciclo (medir, sumar, reentrenar, comparar) y los documentos dudosos seguirán yendo a revisión humana.
+
+**Estado:** el modelo nuevo (v2) ya está instalado en la versión de escritorio y en el Docker local, con respaldo del anterior. En el repositorio sigue publicada la versión v1.0.0; la v2 se publicará con una nueva etiqueta cuando se decida. Los certificados y el dataset reales no se publican (los datos de alumnos no salen de la institución).
