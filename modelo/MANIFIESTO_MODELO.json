@@ -1,7 +1,7 @@
 {
  "modelo": "clasificador-documentos",
- "version": "v1",
- "generado": "2026-11-23",
+ "version": "v2",
+ "generado": "2026-11-25",
  "scikit_learn": "1.9.1",
  "clases": [
   "Actas de nacimiento",
@@ -12,14 +12,14 @@
   "Equivalencia"
  ],
  "artefactos": {
-  "modelo_clasificador.pkl": "b82651e975fa2e5751ca17da0f8c2db99888566c161a0d2b6c0a1872d3d5d621",
-  "vectorizador.pkl": "ac8341f89d1765737fed693b269bc9ef10a43b1598044e2375093b8fa02ff623"
+  "modelo_clasificador.pkl": "0c732506173072cb41662af1a4887abdda74c26650e3a15d91bcb591753dcfb5",
+  "vectorizador.pkl": "a889b3e262cedd268b1a2b5939988074314b92f8112c290d811ed8651bfd2dde"
  },
  "metricas_referencia": {
-  "exactitud": 0.9832,
-  "f1_macro": 0.9832,
-  "margen_p5": 1.478,
-  "baja_confianza": 0.0335,
-  "latencia_prediccion_ms": 0.0012
+  "exactitud": 0.9841,
+  "f1_macro": 0.9825,
+  "margen_p5": 1.6066,
+  "baja_confianza": 0.0244,
+  "latencia_prediccion_ms": 0.0025
  }
 }

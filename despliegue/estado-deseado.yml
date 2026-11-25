@@ -3,8 +3,8 @@
 imagen: ghcr.io/pulido325051/fase-iii
 entornos:
   staging:
-    version: "1.0.0"
+    version: "1.1.0"
     puerto: 18100
   produccion:
-    version: "1.0.0"
+    version: "1.1.0"
     puerto: 18000

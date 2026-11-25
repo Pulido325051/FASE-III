@@ -34,13 +34,14 @@ def test_los_artefactos_coinciden_con_el_manifiesto():
         assert manifiesto.sha256(RAIZ / "modelo" / archivo) == esperado[archivo], f"{archivo} cambio sin actualizar el manifiesto (pipeline/manifiesto.py)"
 
 
-def test_el_vocabulario_no_contiene_datos_personales():
-    vocab = joblib.load(RAIZ / "modelo" / "vectorizador.pkl").vocabulary_
-    curp = re.compile(r"[a-z]{4}\d{6}[hmx][a-z]{5}[a-z0-9]\d")
-    largos = [t for t in vocab if re.search(r"\d{9,}", t)]
-    assert not [t for t in vocab if curp.fullmatch(t)], "el vocabulario tiene una CURP"
-    assert not largos, f"el vocabulario tiene numeros largos (folios o telefonos): {largos[:3]}"
-    assert not [t for t in vocab if "@" in t]
+def test_el_vocabulario_solo_usa_palabras_revisadas():
+    """Privacidad: el modelo publicado no puede llevar nombres, CURP ni folios. Solo la lista revisada."""
+    permitidas = set((RAIZ / "pipeline" / "vocabulario_publico.txt").read_text(encoding="utf-8").split())
+    vectorizador = joblib.load(RAIZ / "modelo" / "vectorizador.pkl")
+    fuera = [t for t in vectorizador.vocabulary_ if t not in permitidas and not t.startswith("__x")]
+    assert not fuera, f"{len(fuera)} palabras del vocabulario no estan en la lista revisada"
+    assert not getattr(vectorizador, "stop_words_", None), "el vectorizador guarda palabras descartadas"
+    assert not [t for t in permitidas if re.search(r"\d", t)], "la lista permitida no debe tener numeros"
 
 
 def test_las_metricas_de_referencia_cumplen_las_compuertas():

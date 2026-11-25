@@ -75,7 +75,7 @@ acceso_denegado = Counter(P + "acceso_denegado_total", "Respuestas 401, 403 y 42
 
 modo_seguro = Gauge(P + "modo_seguro", "1 = modo seguro activo (todo documento pasa a revision humana)", registry=REG)
 
-estado_modelo = {"version": "v1", "sha": "desconocido"}
+estado_modelo = {"version": "v2", "sha": "desconocido"}
 FALLAS = {"retardo_ocr_s": 0.0}         # inyeccion de fallas para simulaciones (solo con FALLAS_HABILITADAS=1)
 
 

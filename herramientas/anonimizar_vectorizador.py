@@ -1,41 +1,47 @@
-"""Quita datos personales del vectorizador antes de publicarlo.
+"""Garantiza que el vectorizador que se publica solo contenga palabras de la lista revisada.
 
-El vectorizador TF-IDF guarda las 10 000 palabras mas frecuentes de los documentos con los que se entreno.
-Si el entrenamiento uso documentos reales, entre ellas pueden quedar CURPs completas, folios o numeros
-de certificado. Este script sustituye esas entradas por marcadores neutros (__x123) SIN cambiar su posicion,
-asi el modelo (que depende del orden de las columnas) funciona igual y esos datos desaparecen del archivo.
+El vectorizador TF-IDF guarda palabras sacadas de los documentos con los que se entreno. Con documentos reales pueden
+quedar nombres, apellidos, CURP o folios. No basta con filtrar patrones: aqui se usa una LISTA DE PALABRAS PERMITIDAS
+(pipeline/vocabulario_publico.txt: palabras comunes y de formato, revisadas a mano). Cualquier otra entrada se sustituye
+por un marcador neutro (__x123) sin cambiar su posicion.
 
     python herramientas/anonimizar_vectorizador.py ORIGEN.pkl DESTINO.pkl
 
-Despues de reentrenar el modelo, ejecutalo antes de copiar el vectorizador a modelo/ y subirlo a GitHub.
+Lo recomendado es entrenar directamente con la lista (pipeline/entrenar.py --vocabulario pipeline/vocabulario_publico.txt):
+asi el modelo aprende solo con esas palabras y sus metricas son las del modelo publicado. Despues de sustituir entradas
+con este script hay que volver a medir el modelo.
 """
 
-import re
+import os
 import sys
 
 import joblib
 
-CURP = re.compile(r"[a-z]{4}\d{6}[hmx][a-z]{5}[a-z0-9]\d")
-CURP_PARCIAL = re.compile(r"[a-z]{4}\d{6}[a-z0-9]{4,8}")   # CURP leida con errores de OCR
-NUMERO_LARGO = re.compile(r"\d{6,}")                         # folios, matriculas, numeros de certificado
+LISTA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline", "vocabulario_publico.txt")
 
 
-def es_dato_personal(token):
-    return bool(CURP.fullmatch(token) or CURP_PARCIAL.fullmatch(token) or NUMERO_LARGO.search(token))
+def palabras_permitidas(ruta=LISTA):
+    with open(ruta, encoding="utf-8") as f:
+        return set(f.read().split())
+
+
+def no_permitidas(vocabulario, permitidas):
+    return [t for t in vocabulario if t not in permitidas and not t.startswith("__x")]
 
 
 def main(origen, destino):
     vectorizador = joblib.load(origen)
-    for atributo in ("stop_words_",):           # sklearn puede guardar aqui TODAS las palabras descartadas
-        if getattr(vectorizador, atributo, None):
-            setattr(vectorizador, atributo, set())
+    if getattr(vectorizador, "stop_words_", None):     # sklearn puede guardar aqui TODAS las palabras descartadas
+        vectorizador.stop_words_ = set()
     vocabulario = vectorizador.vocabulary_
-    quitados = [t for t in vocabulario if es_dato_personal(t)]
-    for token in quitados:
+    quitadas = no_permitidas(vocabulario, palabras_permitidas())
+    for token in quitadas:
         indice = vocabulario.pop(token)
-        vocabulario[f"__x{indice}"] = indice     # misma columna, sin el dato
+        vocabulario[f"__x{indice}"] = indice           # misma columna, sin la palabra
+    if getattr(vectorizador, "vocabulary", None) is not None:
+        vectorizador.vocabulary = dict(vocabulario)
     joblib.dump(vectorizador, destino)
-    print(f"{len(quitados)} entradas sustituidas de {len(vocabulario)}. Guardado en {destino}")
+    print(f"{len(quitadas)} entradas sustituidas de {len(vocabulario)}. Guardado en {destino}")
 
 
 if __name__ == "__main__":

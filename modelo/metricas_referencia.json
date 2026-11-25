@@ -1,20 +1,23 @@
 {
-  "descripcion": "Metricas de referencia del modelo desplegado (configuracion de produccion, division estratificada 80/20 con semilla 42)",
-  "fuente": "MLflow: experimento clasificador-expedientes, run v1-produccion (monitoreo/entrenar_y_registrar.py)",
-  "version": "v1",
-  "documentos_entrenamiento": 3338,
-  "documentos_prueba": 835,
-  "exactitud": 0.9832,
-  "f1_macro": 0.9832,
+  "descripcion": "Metricas de referencia del modelo v2 (formato anterior + formato nuevo de certificados finales), division estratificada 80/20 con semilla 42. El vocabulario se limita a la lista revisada pipeline/vocabulario_publico.txt",
+  "fuente": "Reentrenamiento de noviembre 2026 (README, seccion 18)",
+  "version": "v2",
+  "documentos_entrenamiento": 4265,
+  "documentos_prueba": 1067,
+  "palabras_vocabulario": 644,
+  "exactitud": 0.9841,
+  "f1_macro": 0.9825,
   "f1_por_clase": {
     "Actas de nacimiento": 0.989,
     "CURP": 0.9964,
-    "Certificado Final": 0.9821,
-    "Certificado Parcial": 0.9635,
+    "Certificado Final": 0.9892,
+    "Certificado Parcial": 0.9524,
     "Certificados Secundaria": 0.9929,
     "Equivalencia": 0.9753
   },
-  "margen_p5": 1.478,
-  "baja_confianza": 0.0335,
-  "latencia_prediccion_ms": 0.0012
+  "margen_p5": 1.6066,
+  "baja_confianza": 0.0244,
+  "latencia_prediccion_ms": 0.0025,
+  "exactitud_formato_anterior": 0.9796,
+  "exactitud_formato_nuevo": 1.0
 }
