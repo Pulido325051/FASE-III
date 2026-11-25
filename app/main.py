@@ -142,7 +142,7 @@ async def ciclo_de_vida(app):
     log.info("Cargando modelo: %s", MODELO_PATH)
     estado["motor"] = MotorOCR(MODELO_PATH, VECTORIZADOR_PATH, TESSERACT_CMD, POPPLER_PATH)
     sha = hashlib.md5(Path(MODELO_PATH).read_bytes()).hexdigest()[:8]
-    obs.fijar_modelo(os.getenv("MODELO_VERSION", "v1"), sha)
+    obs.fijar_modelo(os.getenv("MODELO_VERSION", "v2"), sha)
     obs.evento("arranque_modelo", clases=len(estado["motor"].categorias), sha=sha)
     if CONFIG_BD.mysql_host:
         estado["bd"] = BaseDatos(CONFIG_BD)

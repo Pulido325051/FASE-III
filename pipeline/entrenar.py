@@ -41,7 +41,7 @@ def sha256(ruta):
     return h.hexdigest()
 
 
-def entrenar(datos, salida, version, permitir_curp=False):
+def entrenar(datos, salida, version, permitir_curp=False, vocabulario=None):
     df = pd.read_csv(datos)
     errores, resumen = validar(df, permitir_curp=permitir_curp)
     print("Validacion de datos:", json.dumps(resumen, ensure_ascii=False))
@@ -51,7 +51,11 @@ def entrenar(datos, salida, version, permitir_curp=False):
     df = df.dropna(subset=["texto", "categoria"])
     X_tr, X_te, y_tr, y_te = train_test_split(df["texto"].astype(str), df["categoria"], test_size=PARAMS["prueba"], stratify=df["categoria"],
                                               random_state=PARAMS["semilla"])
-    vec = TfidfVectorizer(max_features=PARAMS["tfidf_max_features"], ngram_range=tuple(PARAMS["tfidf_ngram_range"]), lowercase=True)
+    lista = None
+    if vocabulario:   # lista revisada de palabras permitidas: obligatoria para publicar un modelo entrenado con documentos reales
+        with open(vocabulario, encoding="utf-8") as f:
+            lista = f.read().split()
+    vec = TfidfVectorizer(max_features=PARAMS["tfidf_max_features"], ngram_range=tuple(PARAMS["tfidf_ngram_range"]), lowercase=True, vocabulary=lista)
     clf = LinearSVC(C=PARAMS["svc_C"], random_state=PARAMS["semilla"])
     t0 = time.time()
     clf.fit(vec.fit_transform(X_tr), y_tr)
@@ -129,5 +133,6 @@ if __name__ == "__main__":
     ap.add_argument("--salida", default="artefactos")
     ap.add_argument("--version", default="dev")
     ap.add_argument("--permitir-curp", action="store_true", help="solo para el dataset real, que se usa localmente")
+    ap.add_argument("--vocabulario", help="lista de palabras permitidas (pipeline/vocabulario_publico.txt) para modelos que se publican")
     a = ap.parse_args()
-    sys.exit(entrenar(a.datos, a.salida, a.version, a.permitir_curp))
+    sys.exit(entrenar(a.datos, a.salida, a.version, a.permitir_curp, a.vocabulario))

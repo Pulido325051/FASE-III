@@ -48,7 +48,7 @@ services:
       CLAVE_OPERADOR: operador-2026
       CLAVE_CONSULTOR: consultor-2026
       EVENTOS_PATH: /eventos/monitoreo/eventos.jsonl
-      MODELO_VERSION: v1
+      MODELO_VERSION: v2
       FALLAS_HABILITADAS: "1"          # solo para las simulaciones; en produccion NO se define
     volumes:
       - eventos:/eventos

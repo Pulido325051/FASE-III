@@ -265,7 +265,7 @@ docker push MI-USUARIO/clasificador-documentos:fase3
 - La imagen corre con un usuario sin privilegios (`clasificador`).
 - Las contraseñas de la base de prueba tienen un valor por defecto (solo sirven para datos inventados). Si se
   personalizan en `.env`, ese archivo **no** se incluye en la imagen (`.dockerignore`) ni se sube a Git (`.gitignore`).
-- El vectorizador del modelo se publica **sin CURPs ni folios** (`herramientas/anonimizar_vectorizador.py`).
+- El vectorizador del modelo publicado solo contiene **palabras de una lista revisada** (`pipeline/vocabulario_publico.txt`): sin nombres, CURP ni folios. Una prueba del pipeline lo verifica.
 - Eliminar un documento **no borra el PDF**: se mueve a `archivos_eliminados` con una bitácora (`registro_eliminados.csv`).
 - **Fase III: usuarios y roles.** Tres usuarios fijos: **administrador** (todo, incluidos los respaldos), **operador** (todo menos respaldos) y **consultor**
   (solo consultar y ver PDF). Cada ruta exige un permiso: `consultar` (ver), `capturar` (subir, guardar, eliminar, corregir CURP) o `respaldar`; el **servidor** responde

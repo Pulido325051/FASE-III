@@ -682,22 +682,23 @@ el formato anterior, que se seguirá subiendo. Antes de empezar se respaldó el 
 **Cómo se decide si el modelo nuevo entra.** Pasa por las mismas compuertas de calidad y, además, se mide por separado el formato anterior y el nuevo: el modelo nuevo solo
 se promueve si el formato nuevo mejora y el anterior no empeora (ni las otras cinco clases).
 
-**Resultado del reentrenamiento** (4 265 documentos de entrenamiento: 3 338 del formato anterior + 927 del nuevo; el corte de prueba del formato anterior es el mismo del entrenamiento original):
+**Resultado del reentrenamiento** (modelo v2, publicado en la versión v1.1.0; 4 265 documentos de entrenamiento y la misma división de prueba del entrenamiento original):
 
-| Conjunto de prueba | Modelo anterior | Modelo nuevo |
+| Conjunto de prueba | Modelo v1 de la Fase III | Modelo v2 |
 |---|---|---|
-| Formato anterior (835 documentos) | 97,37 % | **97,25 %** (1 documento de diferencia) |
+| Formato anterior (835 documentos) | 97,37 % | **97,96 %** |
 | Formato nuevo (232 documentos) | 0 % (todos en duda) | **100 %** |
-| Todo junto (1 067 documentos) | 76,2 % | **97,8 %** (F1 macro 0,976) |
-| Documentos en duda, todo junto | 25,5 % | **3,4 %** |
+| Todo junto (1 067 documentos) | 76,2 % | **98,4 %** (F1 macro 0,983) |
+| Documentos en duda, todo junto | 25,5 % | **2,4 %** |
 
-El F1 de «Certificado Final» pasó de 0,52 a 0,99 y el de «Certificados Secundaria» de 0,61 a 0,99; el resto de las clases quedó igual o casi igual. Cumple las compuertas de calidad.
+Cumple las compuertas de calidad (la clase más débil, «Certificado Parcial», tiene F1 0,952).
 
-**Una prueba automática evitó una fuga de datos.** El primer modelo candidato tenía mejores cifras, pero la prueba de artefactos (`test_el_vocabulario_no_contiene_datos_personales`) falló: el vocabulario
-había incorporado 31 números largos de los certificados nuevos (folios). El modelo se publica con el repositorio, así que se reentrenó excluyendo del vocabulario las palabras con 8 o más dígitos seguidos.
-Costó 0,12 puntos de exactitud en el formato anterior y dejó el vocabulario sin números largos.
+**Privacidad: lista de palabras permitidas.** Durante la revisión previa a publicar se vio que filtrar solo CURP y folios no era suficiente. El vocabulario del modelo se limita ahora a
+**644 palabras comunes y de formato, revisadas** (`pipeline/vocabulario_publico.txt`), sin nombres, CURP ni números. El modelo resultó además más preciso que con 10 000 palabras. La prueba
+`test_el_vocabulario_solo_usa_palabras_revisadas` detiene el pipeline si aparece cualquier otra palabra. El modelo v1 que figura en el historial del repositorio se sustituyó por una versión
+entrenada con la misma lista, por lo que sus métricas difieren ligeramente de las reportadas en las secciones anteriores (esas corresponden al entrenamiento original).
 
 **Limitación honesta:** el 100 % en el formato nuevo se midió con documentos del mismo lote, que son casi idénticos entre sí; es una señal buena pero no garantiza que otro formato distinto funcione igual. Por eso el siguiente
 formato nuevo repetirá el mismo ciclo (medir, sumar, reentrenar, comparar) y los documentos dudosos seguirán yendo a revisión humana.
 
-**Estado:** el modelo nuevo (v2) ya está instalado en la versión de escritorio y en el Docker local, con respaldo del anterior. En el repositorio sigue publicada la versión v1.0.0; la v2 se publicará con una nueva etiqueta cuando se decida. Los certificados y el dataset reales no se publican (los datos de alumnos no salen de la institución).
+Los certificados y el dataset reales no se publican (los datos de alumnos no salen de la institución).
